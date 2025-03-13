@@ -1084,7 +1084,7 @@ function createQuestionElement(questionData) {
                 <p class="answer-content">${questionData.answer}</p>
                 <div class="answer-meta">
                     <span class="answer-by">洪泽龙 & 成梦莹</span>
-                    <span class="answer-date">${questionData.answerDate}</span>
+                    <span class="answer-date">${questionData.answerDate || ''}</span>
                 </div>
             </div>
         `;
