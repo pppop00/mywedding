@@ -1,0 +1,20 @@
+// Firebase Firestore 规则
+// 复制这些规则到 Firebase 控制台 -> Firestore Database -> 规则 标签页中
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      // 允许所有人读取数据
+      allow read: if true;
+      
+      // 允许所有人写入数据 (在测试环境中可用，生产环境应更严格)
+      allow write: if true;
+      
+      // 更安全的规则设置示例 (可在网站正式发布后使用)
+      // allow create: if request.resource.data.name is string && 
+      //                request.resource.data.question is string;
+      // allow update, delete: if request.auth != null || true;
+    }
+  }
+} 

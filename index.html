@@ -11,7 +11,8 @@
     <meta name="keywords" content="婚礼, 邀请函, 婚礼网站, 洪泽龙, 成梦莹">
     <meta property="og:title" content="洪泽龙 & 成梦莹的婚礼邀请 | 2026.01.01">
     <meta property="og:description" content="我们诚挚地邀请您参加我们的婚礼，一起见证我们的爱情故事。">
-    <link rel="icon" href="favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="alternate icon" href="favicon.ico">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 </head>
 <body>
@@ -235,13 +236,13 @@
     </footer>
 
     <!-- Firebase SDK -->
-    <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, getDoc, doc, deleteDoc, updateDoc, query, orderBy, onSnapshot, where } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
-        import { serverTimestamp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
-
-        // Your web app's Firebase configuration
+    <!-- 更换为标准CDN加载方式 -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-storage-compat.js"></script>
+    
+    <script>
+        // Firebase配置
         const firebaseConfig = {
             apiKey: "AIzaSyDkidncMy-rZMS7hN1ahnROgcevqJBqKao",
             authDomain: "mywedding-d9004.firebaseapp.com",
@@ -251,26 +252,155 @@
             appId: "1:769730099125:web:b46fbe9a4a15eadf3b4bfc"
         };
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        // 在全局范围声明变量
+        let db;
+        let storage;
 
-        // 将Firebase服务暴露给全局，以便在script.js中访问
-        window.firebaseServices = {
-            db,
-            collection,
-            addDoc,
-            getDocs,
-            getDoc,
-            doc,
-            deleteDoc,
-            updateDoc,
-            query,
-            orderBy,
-            onSnapshot,
-            serverTimestamp,
-            where
-        };
+        // 初始化Firebase
+        try {
+            console.log('正在初始化Firebase...');
+            firebase.initializeApp(firebaseConfig);
+            console.log('Firebase初始化成功');
+            
+            db = firebase.firestore();
+            console.log('Firestore初始化成功', db);
+            
+            storage = firebase.storage();
+            console.log('Firebase Storage初始化成功', storage);
+            
+            // 测试数据库连接
+            db.collection('questions').limit(1).get()
+                .then(snapshot => {
+                    console.log('成功连接到Firestore，读取到问题集合', snapshot.size ? '有数据' : '无数据');
+                    
+                    // 数据库连接成功后，将Firebase服务暴露给全局
+                    setupFirebaseServices();
+                })
+                .catch(error => {
+                    console.error('Firestore连接测试失败', error);
+                    
+                    // 即使连接测试失败，仍然设置服务
+                    console.log('尽管连接测试失败，仍尝试设置Firebase服务...');
+                    setupFirebaseServices();
+                    
+                    // 显示友好的错误消息
+                    showFirebaseError();
+                });
+        } catch (error) {
+            console.error('Firebase初始化失败', error);
+            
+            // 显示友好的错误消息
+            showFirebaseError();
+        }
+        
+        // 设置Firebase服务函数
+        function setupFirebaseServices() {
+            console.log('设置全局Firebase服务...');
+            
+            // 将Firebase服务暴露给全局，以便在script.js中访问
+            window.firebaseServices = {
+                db,
+                collection: db.collection.bind(db),
+                addDoc: (collectionRef, data) => collectionRef.add(data),
+                getDocs: (queryRef) => {
+                    console.log('执行getDocs，查询引用类型:', typeof queryRef);
+                    if (queryRef && typeof queryRef.get === 'function') {
+                        console.log('使用queryRef.get()方法获取数据');
+                        return queryRef.get();
+                    } else {
+                        console.error('查询引用不包含get方法:', queryRef);
+                        return Promise.reject(new Error('无效的查询引用'));
+                    }
+                },
+                getDoc: (docRef) => docRef.get(),
+                doc: db.doc.bind(db),
+                deleteDoc: (docRef) => docRef.delete(),
+                updateDoc: (docRef, data) => docRef.update(data),
+                query: (collectionRef, ...queryConstraints) => {
+                    console.log('构建查询，集合:', collectionRef, '约束条件:', queryConstraints);
+                    let ref = collectionRef;
+                    for (const constraint of queryConstraints) {
+                        if (constraint.field && constraint.direction) {
+                            // orderBy处理
+                            console.log('应用orderBy约束:', constraint.field, constraint.direction);
+                            ref = ref.orderBy(constraint.field, constraint.direction);
+                        } else if (constraint.field && constraint.operator && constraint.value !== undefined) {
+                            // where处理
+                            console.log('应用where约束:', constraint.field, constraint.operator, constraint.value);
+                            ref = ref.where(constraint.field, constraint.operator, constraint.value);
+                        }
+                    }
+                    console.log('查询构建完成:', ref);
+                    return ref;
+                },
+                orderBy: (field, direction) => ({ field, direction }),
+                onSnapshot: (queryRef, callback, errorCallback) => {
+                    console.log('设置onSnapshot, 查询引用:', queryRef);
+                    if (queryRef && typeof queryRef.onSnapshot === 'function') {
+                        console.log('使用queryRef.onSnapshot()方法监听数据变化');
+                        return queryRef.onSnapshot(callback, errorCallback);
+                    } else {
+                        console.error('查询引用不包含onSnapshot方法:', queryRef);
+                        errorCallback && errorCallback(new Error('无效的查询引用'));
+                        return () => {}; // 返回一个空的取消函数
+                    }
+                },
+                serverTimestamp: firebase.firestore.FieldValue.serverTimestamp,
+                where: (field, operator, value) => ({ field, operator, value }),
+                storage: {
+                    ref: (path) => storage.ref(path),
+                    // 其他可能需要的存储方法
+                }
+            };
+            
+            console.log('Firebase服务设置完成，触发页面初始化');
+            
+            // 触发自定义事件通知页面脚本Firebase已准备好
+            document.dispatchEvent(new Event('firebase-ready'));
+        }
+
+        // 显示Firebase错误消息
+        function showFirebaseError() {
+            // 创建错误消息容器
+            const errorContainer = document.createElement('div');
+            errorContainer.style.position = 'fixed';
+            errorContainer.style.bottom = '20px';
+            errorContainer.style.left = '20px';
+            errorContainer.style.backgroundColor = 'rgba(255,59,48,0.9)';
+            errorContainer.style.color = 'white';
+            errorContainer.style.padding = '10px 20px';
+            errorContainer.style.borderRadius = '8px';
+            errorContainer.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+            errorContainer.style.zIndex = '9999';
+            errorContainer.style.maxWidth = '80%';
+            errorContainer.style.fontFamily = 'SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif';
+            
+            errorContainer.innerHTML = `
+                <p style="margin: 0; font-weight: bold;">连接问题</p>
+                <p style="margin: 5px 0 0;">无法连接到服务器，问题和祝福功能暂时不可用。请稍后刷新页面重试。</p>
+            `;
+            
+            // 添加关闭按钮
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '关闭';
+            closeBtn.style.background = 'transparent';
+            closeBtn.style.border = '1px solid white';
+            closeBtn.style.color = 'white';
+            closeBtn.style.padding = '5px 10px';
+            closeBtn.style.borderRadius = '4px';
+            closeBtn.style.marginTop = '10px';
+            closeBtn.style.cursor = 'pointer';
+            closeBtn.style.fontFamily = 'inherit';
+            
+            closeBtn.addEventListener('click', function() {
+                document.body.removeChild(errorContainer);
+            });
+            
+            errorContainer.appendChild(closeBtn);
+            
+            // 添加到页面
+            document.body.appendChild(errorContainer);
+        }
     </script>
 </body>
 </html> 

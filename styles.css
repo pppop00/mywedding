@@ -1057,11 +1057,11 @@ footer p {
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 20px 10px;
+    padding: 15px 10px;
     border-radius: 12px;
     text-decoration: none;
     transition: all 0.3s ease;
-    height: 120px;
+    height: 100px;
     position: relative;
     overflow: hidden;
 }
@@ -1163,17 +1163,69 @@ footer p {
 /* 媒体查询更新 */
 @media (max-width: 768px) {
     .map-options-grid {
-        grid-template-columns: 1fr;
-        grid-gap: 15px;
+        grid-template-columns: 1fr 1fr;
+        grid-gap: 10px;
         height: auto;
-        padding-bottom: 20px;
+        padding: 15px;
     }
     
     .map-option {
-        height: 100px;
+        height: 80px;
+        padding: 10px 5px;
+    }
+    
+    .map-option-title {
+        font-size: 14px;
+        margin-bottom: 2px;
+    }
+    
+    .map-option-subtitle {
+        font-size: 10px;
+    }
+    
+    .map-option-icon {
+        font-size: 18px;
+        margin-bottom: 5px;
     }
     
     .directions-options {
         height: auto;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+/* 更小的屏幕适配 */
+@media (max-width: 480px) {
+    .map-options-grid {
+        grid-gap: 8px;
+        padding: 10px;
+    }
+    
+    .map-option {
+        height: 70px;
+        padding: 8px 5px;
+    }
+
+    .map-option-icon {
+        font-size: 16px;
+        margin-bottom: 3px;
+    }
+    
+    .map-option-title {
+        font-size: 12px;
+        margin-bottom: 1px;
+    }
+    
+    .map-option-subtitle {
+        font-size: 9px;
+    }
+    
+    .directions-info h3 {
+        font-size: 16px;
+    }
+    
+    .directions-info p {
+        font-size: 14px;
     }
 } 

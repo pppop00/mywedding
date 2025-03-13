@@ -8,11 +8,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化苹果地图
     initAppleMap();
     
-    // 初始化照片上传功能
-    initWishesForm();
-    
-    // 初始化问答功能
-    initQuestionsForm();
+    // 检查Firebase是否已准备好
+    if (window.firebaseServices && window.firebaseServices.db) {
+        console.log('Firebase在DOMContentLoaded时已准备好，初始化数据功能');
+        // 初始化照片上传功能
+        initWishesForm();
+        
+        // 初始化问答功能
+        initQuestionsForm();
+    } else {
+        console.log('等待Firebase准备就绪...');
+        // 等待Firebase准备就绪的事件
+        document.addEventListener('firebase-ready', function() {
+            console.log('Firebase准备就绪事件触发，初始化数据功能');
+            // 初始化照片上传功能
+            initWishesForm();
+            
+            // 初始化问答功能
+            initQuestionsForm();
+        });
+    }
 });
 
 // 倒计时功能
@@ -281,126 +296,401 @@ function createMapOption(className, title, subtitle, url) {
 
 // 祝福表单功能
 function initWishesForm() {
+    // 获取Firebase服务
+    if (!window.firebaseServices) {
+        console.error('Firebase服务尚未加载，祝福功能将无法正常工作');
+        return;
+    }
+    
+    const { 
+        db, 
+        collection, 
+        addDoc, 
+        getDocs, 
+        serverTimestamp,
+        query,
+        orderBy,
+        onSnapshot,
+        where,
+        storage
+    } = window.firebaseServices;
+    
+    console.log('已成功获取Firebase服务用于祝福功能');
+    
+    // 创建加载指示器
+    function createLoadingIndicator() {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-indicator';
+        loadingDiv.innerHTML = `
+            <div class="loading-spinner"></div>
+            <p>正在上传照片，请稍候...</p>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+        `;
+        
+        const style = document.createElement('style');
+        style.textContent = `
+            .loading-indicator {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(255, 255, 255, 0.8);
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 9999;
+                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial;
+            }
+            .loading-spinner {
+                width: 40px;
+                height: 40px;
+                border: 4px solid #f5f5f7;
+                border-top: 4px solid #0071e3;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin-bottom: 20px;
+            }
+            .progress-bar {
+                width: 80%;
+                max-width: 300px;
+                height: 6px;
+                background-color: #f5f5f7;
+                border-radius: 3px;
+                margin-top: 10px;
+                overflow: hidden;
+            }
+            .progress-fill {
+                height: 100%;
+                width: 0%;
+                background-color: #0071e3;
+                transition: width 0.3s ease;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        
+        document.head.appendChild(style);
+        return loadingDiv;
+    }
+    
+    // 更新进度指示器
+    function updateProgress(loadingDiv, progress) {
+        const progressFill = loadingDiv.querySelector('.progress-fill');
+        if (progressFill) {
+            progressFill.style.width = `${Math.round(progress)}%`;
+        }
+    }
+    
     const wishesForm = document.getElementById('wishes-form');
     const wishesList = document.getElementById('wishes-list');
     
+    if (!wishesForm || !wishesList) {
+        console.error('祝福表单或祝福列表元素不存在');
+        return;
+    }
+    
+    console.log('祝福表单已初始化');
+    
+    // 清空示例祝福
+    wishesList.innerHTML = '';
+    
+    // 从Firebase加载祝福
+    loadWishesFromFirebase();
+    
+    // 实时监听新祝福
+    setupWishesListener();
+    
     if (wishesForm) {
-        wishesForm.addEventListener('submit', function(e) {
+        wishesForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             // 获取表单数据
-            const name = document.getElementById('name').value;
-            const message = document.getElementById('message').value;
+            const name = document.getElementById('name').value.trim();
+            const message = document.getElementById('message').value.trim();
             const photoInput = document.getElementById('photo');
             
-            // 创建新的祝福元素
-            const wishElement = document.createElement('div');
-            wishElement.className = 'wish-item';
-            
-            // 创建祝福内容
-            const contentElement = document.createElement('div');
-            contentElement.className = 'wish-content';
-            contentElement.innerHTML = `
-                <div class="wish-name">${name}</div>
-                <div class="wish-message">${message}</div>
-                <div class="wish-date">${new Date().toLocaleDateString()}</div>
-            `;
-            
-            // 处理照片上传
-            if (photoInput.files && photoInput.files[0]) {
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    const photoURL = e.target.result;
-                    
-                    // 添加照片
-                    const photoElement = document.createElement('div');
-                    photoElement.className = 'wish-photo';
-                    photoElement.innerHTML = `<img src="${photoURL}" alt="${name}的照片">`;
-                    
-                    // 将照片和内容添加到祝福元素
-                    wishElement.appendChild(photoElement);
-                    wishElement.appendChild(contentElement);
-                    
-                    // 添加到祝福列表
-                    if (wishesList) {
-                        wishesList.insertBefore(wishElement, wishesList.firstChild);
-                    }
-                };
-                
-                reader.readAsDataURL(photoInput.files[0]);
-            } else {
-                // 如果没有照片，只添加内容
-                wishElement.appendChild(contentElement);
-                
-                // 添加到祝福列表
-                if (wishesList) {
-                    wishesList.insertBefore(wishElement, wishesList.firstChild);
-                }
+            if (!name || !message) {
+                alert('请填写您的姓名和祝福语');
+                return;
             }
             
-            // 重置表单
-            wishesForm.reset();
+            // 禁用提交按钮防止重复提交
+            const submitBtn = wishesForm.querySelector('.submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '提交中...';
             
-            // 显示成功消息
-            const successMessage = document.createElement('div');
-            successMessage.className = 'success-message';
-            successMessage.textContent = '感谢您的祝福！';
-            wishesForm.appendChild(successMessage);
-            
-            // 3秒后移除成功消息
-            setTimeout(() => {
-                successMessage.remove();
-            }, 3000);
+            try {
+                if (photoInput.files && photoInput.files[0]) {
+                    const file = photoInput.files[0];
+                    // 文件大小限制（5MB）
+                    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+                    
+                    if (file.size > MAX_FILE_SIZE) {
+                        showErrorMessage('图片大小不能超过5MB，请重新选择较小的图片');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '发送祝福';
+                        return;
+                    }
+                    
+                    // 显示加载指示器
+                    const loadingIndicator = createLoadingIndicator();
+                    document.body.appendChild(loadingIndicator);
+                    
+                    // 创建唯一的文件名
+                    const timestamp = new Date().getTime();
+                    const fileName = `wishes/${timestamp}_${file.name}`;
+                    
+                    // 上传到Firebase Storage
+                    const storageRef = storage.ref(fileName);
+                    const uploadTask = storageRef.put(file);
+                    
+                    // 监听上传进度
+                    uploadTask.on('state_changed', 
+                        (snapshot) => {
+                            // 更新进度
+                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                            updateProgress(loadingIndicator, progress);
+                            console.log('上传进度: ' + progress + '%');
+                        }, 
+                        (error) => {
+                            // 处理错误
+                            console.error('照片上传失败:', error);
+                            document.body.removeChild(loadingIndicator);
+                            showErrorMessage('照片上传失败，请重试');
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = '发送祝福';
+                        }, 
+                        async () => {
+                            // 上传完成，获取下载URL
+                            try {
+                                const photoURL = await uploadTask.snapshot.ref.getDownloadURL();
+                                console.log('照片上传成功，URL:', photoURL);
+                                
+                                // 添加祝福到Firebase (带照片URL)
+                                const wishId = await addWishToFirebase(name, message, photoURL);
+                                
+                                // 移除加载指示器
+                                document.body.removeChild(loadingIndicator);
+                                
+                                // 重置表单
+                                wishesForm.reset();
+                                
+                                // 显示成功消息
+                                showSuccessMessage(wishesForm, '感谢您的祝福！');
+                                
+                                // 恢复提交按钮
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = '发送祝福';
+                            } catch (error) {
+                                console.error('获取照片URL失败:', error);
+                                document.body.removeChild(loadingIndicator);
+                                showErrorMessage('提交失败，请重试');
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = '发送祝福';
+                            }
+                        }
+                    );
+                    
+                } else {
+                    // 无照片的祝福
+                    const wishId = await addWishToFirebase(name, message, null);
+                    
+                    // 重置表单
+                    wishesForm.reset();
+                    
+                    // 显示成功消息
+                    showSuccessMessage(wishesForm, '感谢您的祝福！');
+                    
+                    // 恢复提交按钮
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '发送祝福';
+                }
+            } catch (error) {
+                console.error('提交祝福时出错:', error);
+                showErrorMessage('提交失败，请重试');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '发送祝福';
+            }
         });
     }
     
-    // 添加示例祝福
-    addSampleWishes();
-}
-
-// 添加示例祝福
-function addSampleWishes() {
-    const wishesList = document.getElementById('wishes-list');
-    if (wishesList) {
-        const sampleWishes = [
-            {
-                name: '张先生',
-                message: '祝福你们新婚快乐，白头偕老！',
-                date: '2025-12-25',
-                hasPhoto: true
-            },
-            {
-                name: '李女士',
-                message: '愿你们的爱情像美酒一样，越陈越香！',
-                date: '2025-12-26',
-                hasPhoto: false
+    // 从Firebase加载祝福
+    async function loadWishesFromFirebase() {
+        try {
+            console.log('正在从Firebase加载祝福...');
+            
+            // 创建一个按时间戳降序排序的查询
+            const wishesRef = collection("wishes");
+            console.log('wishes集合引用创建成功', wishesRef);
+            
+            const q = query(wishesRef, orderBy("timestamp", "desc"));
+            console.log('构建祝福查询对象成功', q);
+            
+            // 执行查询
+            console.log('正在执行祝福查询...');
+            const querySnapshot = await getDocs(q);
+            console.log('祝福查询执行完成', querySnapshot);
+            
+            if (querySnapshot.empty) {
+                console.log('没有找到祝福');
+                return;
             }
-        ];
+            
+            console.log(`从Firebase加载了 ${querySnapshot.size} 条祝福`);
+            
+            // 清空祝福列表
+            wishesList.innerHTML = '';
+            
+            // 添加每条祝福到列表
+            querySnapshot.forEach((docSnapshot) => {
+                console.log('处理祝福文档:', docSnapshot.id);
+                const wishData = docSnapshot.data();
+                console.log('祝福数据:', wishData);
+                const wishElement = createWishElement(wishData);
+                wishesList.appendChild(wishElement);
+            });
+        } catch (error) {
+            console.error('加载祝福时出错:', error);
+            console.error('错误详情:', error.message, error.code);
+            console.error('错误堆栈:', error.stack);
+        }
+    }
+    
+    // 设置实时监听
+    function setupWishesListener() {
+        const wishesRef = collection("wishes");
+        const q = query(wishesRef, orderBy("timestamp", "desc"));
         
-        sampleWishes.forEach(wish => {
-            const wishElement = document.createElement('div');
-            wishElement.className = 'wish-item';
+        onSnapshot(q, (querySnapshot) => {
+            // 处理刚刚添加的新祝福
+            querySnapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    const wishData = change.doc.data();
+                    
+                    // 检查是否已存在此祝福（避免重复添加）
+                    let existingWishTimestamp = 0;
+                    
+                    // 处理不同类型的timestamp
+                    if (wishData.timestamp) {
+                        if (typeof wishData.timestamp.toMillis === 'function') {
+                            existingWishTimestamp = wishData.timestamp.toMillis();
+                        } else if (wishData.timestamp.seconds) {
+                            existingWishTimestamp = wishData.timestamp.seconds * 1000;
+                        } else if (wishData.timestamp._seconds) {
+                            existingWishTimestamp = wishData.timestamp._seconds * 1000;
+                        } else if (typeof wishData.timestamp === 'number') {
+                            existingWishTimestamp = wishData.timestamp;
+                        }
+                    }
+                    
+                    console.log('新祝福时间戳:', existingWishTimestamp);
+                    
+                    const existingWishes = wishesList.querySelectorAll('.wish-item');
+                    let isDuplicate = false;
+                    
+                    for (let i = 0; i < existingWishes.length; i++) {
+                        const existingWish = existingWishes[i];
+                        const timestamp = existingWish.getAttribute('data-timestamp');
+                        if (timestamp && parseInt(timestamp) === existingWishTimestamp) {
+                            isDuplicate = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!isDuplicate) {
+                        console.log('新祝福已添加');
+                        const wishElement = createWishElement(wishData);
+                        wishesList.insertBefore(wishElement, wishesList.firstChild);
+                    }
+                }
+            });
+        }, (error) => {
+            console.error('监听祝福变化时出错:', error);
+        });
+    }
+    
+    // 添加祝福到Firebase
+    async function addWishToFirebase(name, message, photoURL) {
+        try {
+            // 创建新祝福对象
+            const newWish = {
+                name: name,
+                message: message,
+                photoURL: photoURL, // 现在这将是Storage中的URL，而非DataURL
+                date: new Date().toLocaleDateString('zh-CN'),
+                timestamp: serverTimestamp()
+            };
             
-            // 添加示例照片
-            if (wish.hasPhoto) {
-                const photoElement = document.createElement('div');
-                photoElement.className = 'wish-photo';
-                photoElement.innerHTML = `<img src="https://picsum.photos/100/100?random=${Math.random()}" alt="${wish.name}的照片">`;
-                wishElement.appendChild(photoElement);
+            // 添加到Firebase
+            const wishesRef = collection("wishes");
+            const docRef = await addDoc(wishesRef, newWish);
+            console.log('祝福已保存到Firebase, ID:', docRef.id);
+            
+            // 不需要手动添加DOM元素，监听器会处理这个
+            return docRef.id;
+        } catch (error) {
+            console.error('添加祝福到Firebase时出错:', error);
+            console.error('错误详情:', error.message, error.code);
+            throw error; // 重新抛出错误以便调用者处理
+        }
+    }
+    
+    // 创建祝福元素
+    function createWishElement(wishData) {
+        const wishElement = document.createElement('div');
+        wishElement.className = 'wish-item';
+        
+        // 保存时间戳用于去重
+        if (wishData.timestamp) {
+            let timestampValue = 0;
+            
+            // 处理不同类型的timestamp
+            if (typeof wishData.timestamp.toMillis === 'function') {
+                // Firestore Timestamp对象
+                timestampValue = wishData.timestamp.toMillis();
+            } else if (wishData.timestamp.seconds) {
+                // Firestore Timestamp原始格式
+                timestampValue = wishData.timestamp.seconds * 1000;
+            } else if (wishData.timestamp._seconds) {
+                // 另一种Firestore格式
+                timestampValue = wishData.timestamp._seconds * 1000;
+            } else if (typeof wishData.timestamp === 'number') {
+                // 已经是毫秒时间戳
+                timestampValue = wishData.timestamp;
+            } else {
+                // 回退到日期字符串
+                timestampValue = new Date(wishData.date || Date.now()).getTime();
             }
             
-            const contentElement = document.createElement('div');
-            contentElement.className = 'wish-content';
-            contentElement.innerHTML = `
-                <div class="wish-name">${wish.name}</div>
-                <div class="wish-message">${wish.message}</div>
-                <div class="wish-date">${wish.date}</div>
-            `;
-            
-            wishElement.appendChild(contentElement);
-            wishesList.appendChild(wishElement);
-        });
+            wishElement.setAttribute('data-timestamp', timestampValue);
+            console.log('祝福时间戳值:', timestampValue);
+        }
+        
+        // 如果有照片，添加照片
+        if (wishData.photoURL) {
+            const photoElement = document.createElement('div');
+            photoElement.className = 'wish-photo';
+            photoElement.innerHTML = `<img src="${wishData.photoURL}" alt="${wishData.name}的照片">`;
+            wishElement.appendChild(photoElement);
+        }
+        
+        // 添加祝福内容
+        const contentElement = document.createElement('div');
+        contentElement.className = 'wish-content';
+        contentElement.innerHTML = `
+            <div class="wish-name">${wishData.name}</div>
+            <div class="wish-message">${wishData.message}</div>
+            <div class="wish-date">${wishData.date}</div>
+        `;
+        
+        wishElement.appendChild(contentElement);
+        return wishElement;
     }
 }
 
@@ -460,6 +750,8 @@ function initQuestionsForm() {
         where
     } = window.firebaseServices;
     
+    console.log('已成功获取Firebase服务用于问答功能');
+    
     // 清空示例问题
     questionsList.innerHTML = '';
     
@@ -475,13 +767,17 @@ function initQuestionsForm() {
             console.log('正在从Firebase加载问题...');
             
             // 创建一个按时间戳降序排序的查询
-            const q = query(
-                collection(db, "questions"),
-                orderBy("timestamp", "desc")
-            );
+            const questionsRef = collection("questions");
+            console.log('questions集合引用创建成功', questionsRef);
+            
+            // 修复查询方法
+            const q = query(questionsRef, orderBy("timestamp", "desc"));
+            console.log('构建查询对象成功', q);
             
             // 执行查询
+            console.log('正在执行查询...');
             const querySnapshot = await getDocs(q);
+            console.log('查询执行完成', querySnapshot);
             
             if (querySnapshot.empty) {
                 console.log('没有找到问题');
@@ -495,7 +791,9 @@ function initQuestionsForm() {
             
             // 添加每个问题到列表
             querySnapshot.forEach((docSnapshot) => {
+                console.log('处理问题文档:', docSnapshot.id);
                 const questionData = docSnapshot.data();
+                console.log('问题数据:', questionData);
                 questionData.id = docSnapshot.id;  // 使用Firebase的文档ID
                 
                 // 创建问题元素并添加到列表
@@ -504,15 +802,15 @@ function initQuestionsForm() {
             });
         } catch (error) {
             console.error('加载问题时出错:', error);
+            console.error('错误详情:', error.message, error.code);
+            console.error('错误堆栈:', error.stack);
         }
     }
     
     // 设置实时监听
     function setupQuestionsListener() {
-        const q = query(
-            collection(db, "questions"),
-            orderBy("timestamp", "desc")
-        );
+        const questionsRef = collection("questions");
+        const q = query(questionsRef, orderBy("timestamp", "desc"));
         
         onSnapshot(q, (querySnapshot) => {
             // 处理刚刚添加的新问题
@@ -621,12 +919,14 @@ function initQuestionsForm() {
             };
             
             // 添加到Firebase
-            const docRef = await addDoc(collection(db, "questions"), newQuestion);
+            const questionsRef = collection("questions");
+            const docRef = await addDoc(questionsRef, newQuestion);
             console.log('问题已保存到Firebase, ID:', docRef.id);
             
             // 不需要手动添加DOM元素，监听器会处理这个
         } catch (error) {
             console.error('添加问题到Firebase时出错:', error);
+            console.error('错误详情:', error.message, error.code);
         }
     }
     
@@ -647,6 +947,7 @@ function initQuestionsForm() {
             // 不需要手动更新DOM，监听器会处理这个
         } catch (error) {
             console.error('更新Firebase中的问题时出错:', error);
+            console.error('错误详情:', error.message, error.code);
         }
     }
     
@@ -687,7 +988,7 @@ function initQuestionsForm() {
             const questionRef = doc(db, "questions", questionId);
             const docSnap = await getDoc(questionRef);
             
-            if (docSnap.exists()) {
+            if (docSnap.exists) {
                 const questionData = docSnap.data();
                 
                 // 将问题数据填充到表单
@@ -708,6 +1009,7 @@ function initQuestionsForm() {
             }
         } catch (error) {
             console.error('加载问题进行编辑失败:', error);
+            console.error('错误详情:', error.message, error.code);
         }
     }
     
@@ -725,10 +1027,8 @@ function initQuestionsForm() {
             
             for (const question of questions) {
                 // 检查问题是否已添加到Firebase (使用ID作为检查)
-                const q = query(
-                    collection(db, "questions"),
-                    where("localId", "==", question.id)
-                );
+                const questionsRef = collection("questions");
+                const q = query(questionsRef, where("localId", "==", question.id));
                 
                 const querySnapshot = await getDocs(q);
                 
@@ -745,7 +1045,7 @@ function initQuestionsForm() {
                         answered: question.answer ? true : false
                     };
                     
-                    await addDoc(collection(db, "questions"), firestoreQuestion);
+                    await addDoc(collection("questions"), firestoreQuestion);
                     console.log(`问题已迁移 ID: ${question.id}`);
                 } else {
                     console.log(`问题已存在，跳过: ${question.id}`);
@@ -790,22 +1090,7 @@ function createQuestionElement(questionData) {
         `;
     }
     
-    // 添加管理员控制按钮和编辑按钮
-    html += `
-        <div class="admin-controls">
-    `;
-    
-    // 只有在没有回答时才显示编辑按钮
-    if (!questionData.answer) {
-        html += `
-            <button class="edit-btn" data-id="${questionData.id}">编辑</button>
-        `;
-    }
-    
-    html += `
-            <button class="delete-btn" data-id="${questionData.id}">删除</button>
-        </div>
-    `;
+    // 管理员控制按钮部分已移除，普通用户无法看到编辑和删除按钮
     
     questionElement.innerHTML = html;
     return questionElement;
@@ -829,4 +1114,62 @@ function showSuccessMessage(formElement, message) {
     setTimeout(() => {
         successMessage.remove();
     }, 3000);
+}
+
+// 显示错误消息
+function showErrorMessage(message) {
+    // 创建错误消息容器
+    const errorContainer = document.createElement('div');
+    errorContainer.className = 'error-message-container';
+    
+    // 设置样式
+    Object.assign(errorContainer.style, {
+        position: 'fixed',
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        backgroundColor: 'rgba(255, 59, 48, 0.95)',
+        color: 'white',
+        padding: '12px 20px',
+        borderRadius: '8px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+        zIndex: '9999',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial',
+        fontSize: '14px',
+        maxWidth: '90%',
+        textAlign: 'center',
+        animationName: 'errorSlideIn',
+        animationDuration: '0.3s'
+    });
+    
+    // 添加消息内容
+    errorContainer.textContent = message;
+    
+    // 添加动画样式
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes errorSlideIn {
+            from { transform: translate(-50%, 100%); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+    `;
+    
+    // 添加到文档
+    document.head.appendChild(style);
+    document.body.appendChild(errorContainer);
+    
+    // 自动移除
+    setTimeout(() => {
+        errorContainer.style.opacity = '0';
+        errorContainer.style.transition = 'opacity 0.3s ease';
+        
+        setTimeout(() => {
+            if (document.body.contains(errorContainer)) {
+                document.body.removeChild(errorContainer);
+            }
+            if (document.head.contains(style)) {
+                document.head.removeChild(style);
+            }
+        }, 300);
+    }, 4000);
 }
