@@ -1172,17 +1172,42 @@ footer p {
 /* 媒体查询更新 */
 @media (max-width: 768px) {
     .map-options-grid {
-        grid-template-columns: 1fr;
-        grid-gap: 15px;
+        grid-template-columns: 1fr 1fr;
+        grid-gap: 10px;
         height: auto;
         padding-bottom: 20px;
     }
     
     .map-option {
-        height: 100px;
+        height: 90px;
     }
     
     .directions-options {
         height: auto;
+    }
+    
+    .map-option-icon {
+        font-size: 20px;
+        margin-bottom: 5px;
+    }
+    
+    .map-option-title {
+        font-size: 14px;
+    }
+    
+    .map-option-subtitle {
+        font-size: 10px;
+    }
+}
+
+/* 针对超小屏幕的特殊处理 */
+@media (max-width: 375px) {
+    .map-options-grid {
+        grid-template-columns: 1fr;
+        padding: 10px;
+    }
+    
+    .map-option {
+        height: 70px;
     }
 } 
