@@ -1,97 +1,142 @@
 # 洪泽龙 & 成梦莹的婚礼网站
 
-这是一个以苹果风格设计的婚礼网站，采用纯HTML、CSS和JavaScript构建。网站包含婚礼倒计时、邀请函、婚礼流程、地点导航以及嘉宾祝福留言功能。
+一款优雅的婚礼邀请网站，采用苹果设计语言打造。
 
-## 功能特点
+## 概览
 
-- **苹果风格设计**：精美简约的UI设计，采用苹果官方字体和设计语言
-- **婚礼倒计时**：自动计算并显示距离婚礼还有多少天、时、分、秒
-- **电子邀请函**：优雅的婚礼邀请信息展示
-- **婚礼流程**：时间线形式展示婚礼当天的活动安排
-- **婚礼地点**：集成Google地图，方便宾客查找地点
-- **祝福留言墙**：允许宾客上传照片和祝福语
-- **One More Thing**：特别视频展示区域
-- **响应式设计**：完美适配各种设备，从手机到桌面电脑
+这款网站提供了一个简洁而强大的方式来分享您的婚礼信息，让宾客轻松参与您的特别日子。
 
-## 如何使用
+### 特点
 
-1. 克隆或下载本仓库到您的计算机
-2. 打开`index.html`文件在浏览器中预览网站
-3. 根据需要修改内容和样式
+- 精美的苹果风格界面
+- 实时婚礼倒计时
+- 互动式导航体验
+- 智能地图路线规划
+- 宾客问答交流
+- 照片与祝福分享
+- 多平台设备支持
 
-## 自定义说明
+## 技术
 
-### 修改婚礼信息
+该项目基于现代Web技术构建，融合了多种交互功能：
 
-编辑`index.html`文件，更新以下内容：
+- **前端**：HTML5, CSS3, JavaScript
+- **地图集成**：苹果地图, 谷歌地图, 百度地图, 高德地图
+- **数据存储**：Firebase Firestore
+- **媒体存储**：Firebase Storage
+- **认证**：Firebase Authentication
 
-- 新人姓名
+## 开始使用
+
+### 1. 配置您的Firebase项目
+
+```javascript
+// 1. 创建新的Firebase项目
+// 2. 在index.html中找到并替换以下配置
+const firebaseConfig = {
+    apiKey: "您的API密钥",
+    authDomain: "您的域名.firebaseapp.com",
+    projectId: "您的项目ID",
+    storageBucket: "您的存储桶名称",
+    messagingSenderId: "您的消息发送者ID",
+    appId: "您的应用ID"
+};
+```
+
+### 2. 个性化您的婚礼信息
+
+编辑`index.html`，替换以下内容：
+
 - 婚礼日期和时间
-- 婚礼地点
+- 新人姓名
+- 地点信息
 - 婚礼流程安排
 
-### 修改倒计时
+### 3. 设置地图位置
 
-在`script.js`文件中，找到并修改婚礼日期：
+在`script.js`中更新您的婚礼地点：
 
-```js
-const weddingDate = new Date('January 1, 2026 14:00:00').getTime();
+```javascript
+const weddingLocation = { lat: 42.3954, lng: -71.0892 };
+const weddingAddress = "333 Greatriver Rd, MA, 02145";
 ```
 
-### 设置Google地图
+## 部署
 
-1. 申请[Google Maps JavaScript API密钥](https://developers.google.com/maps/documentation/javascript/get-api-key)
-2. 在`script.js`文件中，找到以下代码并替换YOUR_API_KEY：
+### 选项1：GitHub Pages
 
-```js
-script.src = 'https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initGoogleMap';
+1. 将代码推送至GitHub仓库
+2. 启用GitHub Pages功能
+3. 您的网站将在`https://[用户名].github.io/WeddingWeb`可用
+
+### 选项2：传统Web主机
+
+将所有文件上传至您的Web主机根目录。
+
+## 功能说明
+
+### 婚礼倒计时
+
+自动计算并显示与婚礼日期的时间差，精确到秒。
+
+### 多平台地图导航
+
+支持四种主流地图平台，提供智能路线规划，轻松帮助宾客找到婚礼地点。
+
+### 问题与回答
+
+允许宾客提出问题，新人可以回复，所有互动实时同步。
+
+### 照片与祝福
+
+宾客可以上传照片和留言，分享对新人的祝福。
+
+## 安全设置
+
+### Firestore规则
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null || true;
+    }
+  }
+}
 ```
 
-3. 更新婚礼地点坐标：
+### Storage规则
 
-```js
-const weddingLocation = { lat: 39.9042, lng: 116.4074 }; // 替换为实际婚礼地点坐标
+```
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /wishes/{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}
 ```
 
-### 添加婚礼视频
+## 自定义外观
 
-在`index.html`文件中，找到"One More Thing"部分并替换视频占位符：
+`styles.css`文件包含所有视觉元素定义，您可以调整以下内容来符合您的喜好：
 
-```html
-<div class="video-wrapper">
-    <!-- 将下面的占位符替换为实际视频 -->
-    <p class="video-placeholder">视频即将上线</p>
-    
-    <!-- 添加视频，例如： -->
-    <!-- <video controls>
-         <source src="your-video.mp4" type="video/mp4">
-         您的浏览器不支持视频播放。
-    </video> -->
-</div>
-```
+- 颜色主题
+- 字体大小
+- 间距与排版
+- 动画效果
+- 响应式布局
 
-### 修改样式
+## 支持
 
-所有样式都在`styles.css`文件中定义，您可以根据自己的喜好修改颜色、字体大小、间距等。
-
-## 技术说明
-
-- **HTML5**：页面结构
-- **CSS3**：样式和动画，包括Flexbox、Grid布局和响应式设计
-- **JavaScript**：交互功能，包括倒计时、地图集成和照片上传
-- **Google Maps API**：地图集成
-- **FileReader API**：本地照片预览功能
-
-## 注意事项
-
-- 本网站是为演示目的设计的静态网站，不包含服务器端功能
-- 照片上传功能仅在本地预览，不会实际上传到服务器
-- 要实现真正的照片上传和存储功能，需要添加服务器端代码
-
-## 授权
-
-您可以自由使用、修改和分发这个网站模板，用于您自己的婚礼或其他个人用途。
+- 浏览器支持：Safari、Chrome、Firefox、Edge的最新版本
+- 设备支持：iPhone、iPad、Mac、Windows PC和Android设备
 
 ---
 
-祝您的婚礼圆满成功！ 
+设计与开发：洪泽龙
+
+© 2024 • 用爱设计 • 珍藏美好 
