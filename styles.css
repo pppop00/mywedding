@@ -744,14 +744,6 @@ nav ul li a:hover {
     border-radius: 16px;
 }
 
-.video-note {
-    text-align: center;
-    font-size: 14px;
-    color: #86868b;
-    margin-top: 10px;
-    font-style: italic;
-}
-
 .video-placeholder {
     position: absolute;
     top: 50%;
