@@ -1023,6 +1023,53 @@ function initQuestionsForm() {
     // 实时监听新问题
     setupQuestionsListener();
     
+    // 提交问题表单
+    questionForm.addEventListener('submit', function(e) {
+        e.preventDefault(); // 阻止表单默认提交行为
+        console.log('提交问题表单');
+        
+        const nameInput = document.getElementById('questioner-name');
+        const questionInput = document.getElementById('question-text');
+        
+        if (!nameInput || !questionInput) {
+            console.error('表单元素不存在');
+            return;
+        }
+        
+        const name = nameInput.value.trim();
+        const question = questionInput.value.trim();
+        
+        console.log(`提交的问题：${name} - ${question}`);
+        
+        if (name && question) {
+            if (isEditing && editingQuestionId) {
+                // 更新Firebase中的问题
+                updateQuestionInFirebase(editingQuestionId, name, question);
+                
+                // 重置编辑状态
+                isEditing = false;
+                editingQuestionId = null;
+                questionForm.querySelector('.ask-btn').textContent = originalSubmitBtn;
+                
+                // 显示成功消息
+                showSuccessMessage(questionForm, '问题已更新！');
+                console.log('问题已更新');
+            } else {
+                // 添加问题到Firebase
+                addQuestionToFirebase(name, question);
+                
+                // 显示成功消息
+                showSuccessMessage(questionForm, '问题提交成功！我们会尽快回复。');
+                console.log('问题提交成功');
+            }
+            
+            // 重置表单
+            questionForm.reset();
+        } else {
+            console.error('表单验证失败：姓名或问题为空');
+        }
+    });
+    
     // 从Firebase加载问题
     async function loadQuestionsFromFirebase() {
         try {
@@ -1118,53 +1165,6 @@ function initQuestionsForm() {
             console.error('监听问题变化时出错:', error);
         });
     }
-    
-    // 提交问题表单
-    questionForm.addEventListener('submit', function(e) {
-        e.preventDefault(); // 阻止表单默认提交行为
-        console.log('提交问题表单');
-        
-        const nameInput = document.getElementById('questioner-name');
-        const questionInput = document.getElementById('question-text');
-        
-        if (!nameInput || !questionInput) {
-            console.error('表单元素不存在');
-            return;
-        }
-        
-        const name = nameInput.value.trim();
-        const question = questionInput.value.trim();
-        
-        console.log(`提交的问题：${name} - ${question}`);
-        
-        if (name && question) {
-            if (isEditing && editingQuestionId) {
-                // 更新Firebase中的问题
-                updateQuestionInFirebase(editingQuestionId, name, question);
-                
-                // 重置编辑状态
-                isEditing = false;
-                editingQuestionId = null;
-                questionForm.querySelector('.ask-btn').textContent = originalSubmitBtn;
-                
-                // 显示成功消息
-                showSuccessMessage(questionForm, '问题已更新！');
-                console.log('问题已更新');
-            } else {
-                // 添加问题到Firebase
-                addQuestionToFirebase(name, question);
-                
-                // 显示成功消息
-                showSuccessMessage(questionForm, '问题提交成功！我们会尽快回复。');
-                console.log('问题提交成功');
-            }
-            
-            // 重置表单
-            questionForm.reset();
-        } else {
-            console.error('表单验证失败：姓名或问题为空');
-        }
-    });
     
     // 添加问题到Firebase
     async function addQuestionToFirebase(name, questionText) {
@@ -1451,10 +1451,11 @@ function initSegmentedControl() {
             segment.classList.add('active');
             
             // 根据点击的索引更新背景滑块位置
-            if (index === 0) {
-                segmentedControl.classList.remove('second-active');
-            } else {
+            segmentedControl.classList.remove('second-active', 'third-active');
+            if (index === 1) {
                 segmentedControl.classList.add('second-active');
+            } else if (index === 2) {
+                segmentedControl.classList.add('third-active');
             }
             
             // 隐藏所有content tab
@@ -1467,6 +1468,11 @@ function initSegmentedControl() {
             // 如果切换到宾客留言选项卡，加载宾客留言
             if (targetId === 'wishes-tab') {
                 loadGuestWishes();
+            }
+            
+            // 如果切换到问题互动选项卡，确保问题列表已加载
+            if (targetId === 'questions-tab') {
+                // 问题列表通过initQuestionsForm已经初始化
             }
         });
     });

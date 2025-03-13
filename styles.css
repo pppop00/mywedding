@@ -244,19 +244,20 @@ nav ul li a:hover {
     color: #86868b;
 }
 
-/* 修改婚礼流程时间线布局为左右结构 */
+/* 修改婚礼流程时间线布局为居中布局 */
 .schedule-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-    max-width: 1200px;
+    display: flex;
+    justify-content: center;
+    max-width: 800px;
     margin: 0 auto;
 }
 
 /* 婚礼流程时间线调整 */
 .timeline {
     position: relative;
-    max-width: 100%;
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
 }
 
 .timeline::before {
@@ -510,6 +511,16 @@ nav ul li a:hover {
 
 /* 响应式调整 */
 @media (max-width: 768px) {
+    .schedule-container {
+        flex-direction: column;
+        max-width: 100%;
+    }
+    
+    .timeline {
+        margin-bottom: 30px;
+        max-width: 100%;
+    }
+    
     .rsvp-wishes-container {
         flex-direction: column;
     }
@@ -517,14 +528,6 @@ nav ul li a:hover {
     .rsvp-wishes-form,
     .wishes-gallery {
         max-width: 100%;
-    }
-    
-    .schedule-container {
-        flex-direction: column;
-    }
-    
-    .timeline {
-        margin-bottom: 30px;
     }
     
     .questions-section {
@@ -1365,7 +1368,7 @@ footer p {
     font-size: 16px;
 }
 
-/* 分段控制器样式 */
+/* 分段控制器样式 - 更新为支持三个选项 */
 .segmented-control {
     display: flex;
     max-width: 600px;
@@ -1404,7 +1407,7 @@ footer p {
     position: absolute;
     top: 2px;
     left: 2px;
-    width: calc(50% - 2px);
+    width: calc(33.33% - 2px); /* 更新宽度为三分之一 */
     height: calc(100% - 4px);
     background-color: white;
     border-radius: 6px;
@@ -1414,7 +1417,11 @@ footer p {
 }
 
 .segmented-control.second-active::before {
-    transform: translateX(calc(100%));
+    transform: translateX(100%);
+}
+
+.segmented-control.third-active::before {
+    transform: translateX(200%);
 }
 
 /* 内容标签样式 */
@@ -2136,4 +2143,81 @@ table {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* 问答选项卡样式 */
+.questions-container {
+    background-color: white;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    margin: 0 auto;
+    max-width: 800px;
+}
+
+.questions-title {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 24px;
+    margin-bottom: 15px;
+    color: #1d1d1f;
+}
+
+.questions-intro {
+    font-size: 16px;
+    color: #86868b;
+    margin-bottom: 25px;
+}
+
+.question-form {
+    margin-bottom: 30px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.ask-btn {
+    background: linear-gradient(90deg, #007aff, #5856d6);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.ask-btn:hover {
+    transform: translateY(-2px);
+}
+
+.ask-btn:active {
+    opacity: 0.9;
+    transform: translateY(0);
+}
+
+/* 兼容移动设备的样式 */
+@media (max-width: 768px) {
+    .segmented-control {
+        max-width: 90%;
+    }
+    
+    .segment-btn {
+        font-size: 13px;
+        padding: 8px 5px;
+    }
+    
+    .questions-container,
+    .rsvp-wishes-form {
+        padding: 20px;
+        border-radius: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .segment-btn {
+        font-size: 12px;
+        padding: 8px 2px;
+    }
 } 

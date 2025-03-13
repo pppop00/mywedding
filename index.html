@@ -110,55 +110,6 @@
                             <div class="description">One More Thing</div>
                         </div>
                     </div>
-                    
-                    <div class="questions-section">
-                        <h3 class="questions-title">有问题? 我们来解答</h3>
-                        <p class="questions-intro">您可以在这里提出关于婚礼的任何问题，我们会尽快回复。</p>
-                        
-                        <form id="question-form" class="question-form" onsubmit="event.preventDefault();">
-                            <div class="form-group">
-                                <label for="questioner-name">您的姓名</label>
-                                <input type="text" id="questioner-name" placeholder="请输入您的姓名" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="question-text">您的问题</label>
-                                <textarea id="question-text" placeholder="请输入您想问的问题..." rows="3" required></textarea>
-                            </div>
-                            <button type="submit" class="ask-btn">提交问题</button>
-                        </form>
-                        
-                        <div class="questions-list" id="questions-list">
-                            <!-- 问题将在这里显示 -->
-                            <div class="question-item">
-                                <div class="question-header">
-                                    <span class="questioner">李先生</span>
-                                    <span class="question-date">2025/12/15</span>
-                                </div>
-                                <p class="question-content">婚礼当天是否有停车场?</p>
-                                <div class="answer">
-                                    <p class="answer-content">是的，婚礼场地附近有专门的停车区域，我们会在入口处安排指引人员。</p>
-                                    <div class="answer-meta">
-                                        <span class="answer-by">洪泽龙 & 成梦莹</span>
-                                        <span class="answer-date">2025/12/16</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="question-item">
-                                <div class="question-header">
-                                    <span class="questioner">张女士</span>
-                                    <span class="question-date">2025/12/10</span>
-                                </div>
-                                <p class="question-content">请问婚礼是否有特定的着装要求?</p>
-                                <div class="answer">
-                                    <p class="answer-content">建议正式着装，但没有特定的颜色要求。请穿着舒适，我们希望您能尽情享受婚礼。</p>
-                                    <div class="answer-meta">
-                                        <span class="answer-by">洪泽龙 & 成梦莹</span>
-                                        <span class="answer-date">2025/12/11</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </section>
@@ -186,11 +137,12 @@
         <section id="wishes" class="section">
             <div class="container">
                 <h2 class="section-title">出席回复与祝福</h2>
-                <p class="section-description">请在婚礼举办前告知我们您的出席情况，并留下您的祝福</p>
+                <p class="section-description">请在婚礼举办前告知我们您的出席情况，留下您的祝福或提出问题</p>
                 
                 <div class="segmented-control">
                     <button class="segment-btn active" data-target="rsvp-tab">回复信息</button>
                     <button class="segment-btn" data-target="wishes-tab">祝福留言</button>
+                    <button class="segment-btn" data-target="questions-tab">问题互动</button>
                 </div>
                 
                 <div id="rsvp-tab" class="content-tab active">
@@ -272,6 +224,30 @@
                             <div id="wishes-list" class="wishes-list">
                                 <!-- 回复和祝福将在这里显示 -->
                             </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 添加问答部分作为第三个选项卡 -->
+                <div id="questions-tab" class="content-tab">
+                    <div class="questions-container">
+                        <h3 class="questions-title">有问题? 我们来解答</h3>
+                        <p class="questions-intro">您可以在这里提出关于婚礼的任何问题，我们会尽快回复。</p>
+                        
+                        <form id="question-form" class="question-form">
+                            <div class="form-group">
+                                <label for="questioner-name">您的姓名</label>
+                                <input type="text" id="questioner-name" placeholder="请输入您的姓名" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="question-text">您的问题</label>
+                                <textarea id="question-text" placeholder="请输入您想问的问题..." rows="3" required></textarea>
+                            </div>
+                            <button type="submit" class="ask-btn">提交问题</button>
+                        </form>
+                        
+                        <div class="questions-list" id="questions-list">
+                            <!-- 问题将在这里显示 -->
                         </div>
                     </div>
                 </div>
