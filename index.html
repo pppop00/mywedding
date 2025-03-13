@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>洪泽龙 & 成梦莹的婚礼</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <meta name="description" content="我们诚挚地邀请您参加我们的婚礼，一起见证我们的爱情故事。">
+    <meta name="keywords" content="婚礼, 邀请函, 婚礼网站, 洪泽龙, 成梦莹">
+    <meta property="og:title" content="洪泽龙 & 成梦莹的婚礼邀请 | 2026.01.01">
+    <meta property="og:description" content="我们诚挚地邀请您参加我们的婚礼，一起见证我们的爱情故事。">
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+</head>
+<body>
+    <header>
+        <nav>
+            <ul>
+                <li><a href="#home">首页</a></li>
+                <li><a href="#invitation">邀请函</a></li>
+                <li><a href="#schedule">婚礼流程</a></li>
+                <li><a href="#location">婚礼地点</a></li>
+                <li><a href="#wishes">祝福留言</a></li>
+                <li><a href="#one-more-thing">One More Thing</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section id="home" class="hero">
+            <div class="container">
+                <h1>洪泽龙 & 成梦莹</h1>
+                <h2>🎎</h2>
+                <p class="date">2026年1月1日</p>
+                <div class="countdown-container">
+                    <div class="countdown-item">
+                        <span id="days">00</span>
+                        <span class="countdown-label">天</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span id="hours">00</span>
+                        <span class="countdown-label">时</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span id="minutes">00</span>
+                        <span class="countdown-label">分</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span id="seconds">00</span>
+                        <span class="countdown-label">秒</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="invitation" class="section">
+            <div class="container">
+                <h2 class="section-title">诚挚邀请</h2>
+                <div class="invitation-content">
+                    <p class="invitation-text">
+                        诚挚地邀请您<br>
+                        参加我们的婚礼<br>
+                        一起见证我们爱情的最美时刻
+                    </p>
+                    <div class="names-container">
+                        <div class="name">洪泽龙</div>
+                        <div class="and">&</div>
+                        <div class="name">成梦莹</div>
+                    </div>
+                    <p class="invitation-details">
+                        日期：2026年1月1日<br>
+                        时间：下午两点整<br>
+                        地点：333 Greatriver Rd, MA, 02145
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="schedule" class="section">
+            <div class="container">
+                <h2 class="section-title">婚礼流程</h2>
+                <div class="schedule-container">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="time">14:00</div>
+                            <div class="event">来宾签到</div>
+                            <div class="description">欢迎您的到来，请在入口处签到</div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="time">14:30</div>
+                            <div class="event">婚礼仪式正式开始</div>
+                            <div class="description">新人入场</div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="time">15:00</div>
+                            <div class="event">交换誓言与戒指</div>
+                            <div class="description">见证我们彼此的承诺</div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="time">15:30</div>
+                            <div class="event">宴会开始</div>
+                            <div class="description">共同庆祝这美好的一刻</div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="time">18:00</div>
+                            <div class="event">特别环节</div>
+                            <div class="description">One More Thing</div>
+                        </div>
+                    </div>
+                    
+                    <div class="questions-section">
+                        <h3 class="questions-title">有问题? 我们来解答</h3>
+                        <p class="questions-intro">您可以在这里提出关于婚礼的任何问题，我们会尽快回复。</p>
+                        
+                        <form id="question-form" class="question-form" onsubmit="event.preventDefault();">
+                            <div class="form-group">
+                                <label for="questioner-name">您的姓名</label>
+                                <input type="text" id="questioner-name" placeholder="请输入您的姓名" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="question-text">您的问题</label>
+                                <textarea id="question-text" placeholder="请输入您想问的问题..." rows="3" required></textarea>
+                            </div>
+                            <button type="submit" class="ask-btn">提交问题</button>
+                        </form>
+                        
+                        <div class="questions-list" id="questions-list">
+                            <!-- 问题将在这里显示 -->
+                            <div class="question-item">
+                                <div class="question-header">
+                                    <span class="questioner">李先生</span>
+                                    <span class="question-date">2025/12/15</span>
+                                </div>
+                                <p class="question-content">婚礼当天是否有停车场?</p>
+                                <div class="answer">
+                                    <p class="answer-content">是的，婚礼场地附近有专门的停车区域，我们会在入口处安排指引人员。</p>
+                                    <div class="answer-meta">
+                                        <span class="answer-by">洪泽龙 & 成梦莹</span>
+                                        <span class="answer-date">2025/12/16</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="question-item">
+                                <div class="question-header">
+                                    <span class="questioner">张女士</span>
+                                    <span class="question-date">2025/12/10</span>
+                                </div>
+                                <p class="question-content">请问婚礼是否有特定的着装要求?</p>
+                                <div class="answer">
+                                    <p class="answer-content">建议正式着装，但没有特定的颜色要求。请穿着舒适，我们希望您能尽情享受婚礼。</p>
+                                    <div class="answer-meta">
+                                        <span class="answer-by">洪泽龙 & 成梦莹</span>
+                                        <span class="answer-date">2025/12/11</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="location" class="section">
+            <div class="container">
+                <h2 class="section-title">婚礼地点</h2>
+                <div class="location-details">
+                    <p class="address">333 Greatriver Rd, MA, 02145</p>
+                    <p class="directions">交通指南</p>
+                    <div class="route-planner">
+                        <div class="form-group">
+                            <label for="start-address">您的出发地址</label>
+                            <input type="text" id="start-address" placeholder="请输入您的出发地址" class="location-input">
+                            <button id="get-directions" class="direction-btn">获取路线</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="map" class="map-container">
+                    <!-- 苹果地图将在这里显示 -->
+                </div>
+            </div>
+        </section>
+
+        <section id="wishes" class="section">
+            <div class="container">
+                <h2 class="section-title">祝福我们</h2>
+                <div class="wishes-container">
+                    <form id="wishes-form" class="wishes-form">
+                        <div class="form-group">
+                            <label for="name">您的姓名</label>
+                            <input type="text" id="name" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="message">祝福语</label>
+                            <textarea id="message" name="message" rows="4" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="photo">上传照片</label>
+                            <input type="file" id="photo" name="photo" accept="image/*">
+                        </div>
+                        <button type="submit" class="submit-btn">发送祝福</button>
+                    </form>
+                    <div class="wishes-gallery">
+                        <h3>来自亲友的祝福</h3>
+                        <div id="wishes-list" class="wishes-list">
+                            <!-- 祝福将在这里显示 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="one-more-thing" class="section">
+            <div class="container">
+                <h2 class="section-title">One More Thing</h2>
+                <div class="video-container">
+                    <p class="video-intro">我们为您准备了一个特别的视频</p>
+                    <div class="video-wrapper">
+                        <!-- 视频将在这里显示 -->
+                        <p class="video-placeholder">视频即将上线</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 ZELONG DESIGN</p>
+            <p>用爱设计未来</p>
+            <p>APPLE DESIGN</p>
+            
+        </div>
+    </footer>
+</body>
+</html> 
