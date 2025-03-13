@@ -185,27 +185,99 @@
 
         <section id="wishes" class="section">
             <div class="container">
-                <h2 class="section-title">祝福我们</h2>
-                <div class="wishes-container">
-                    <form id="wishes-form" class="wishes-form">
-                        <div class="form-group">
-                            <label for="name">您的姓名</label>
-                            <input type="text" id="name" name="name" required>
+                <h2 class="section-title">出席回复与祝福</h2>
+                <p class="section-description">请在婚礼举办前告知我们您的出席情况，并留下您的祝福</p>
+                
+                <div class="segmented-control">
+                    <button class="segment active" data-target="rsvp-tab">出席信息</button>
+                    <button class="segment" data-target="wishes-tab">祝福留言</button>
+                    <div class="segment-indicator"></div>
+                </div>
+                
+                <div class="rsvp-wishes-container">
+                    <form id="rsvp-wishes-form" class="rsvp-wishes-form">
+                        <!-- RSVP表单部分 -->
+                        <div id="rsvp-tab" class="form-tab active">
+                            <div class="form-group">
+                                <label for="name">您的姓名</label>
+                                <input type="text" id="name" name="name" required placeholder="请输入您的姓名">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="email">联系邮箱</label>
+                                <input type="email" id="email" name="email" required placeholder="用于接收确认信息">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="phone">联系电话（可选）</label>
+                                <input type="tel" id="phone" name="phone" placeholder="方便我们联系您">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>您是否参加我们的婚礼？</label>
+                                <div class="radio-group">
+                                    <div class="radio-option">
+                                        <input type="radio" id="attending" name="attendStatus" value="attending" checked>
+                                        <label for="attending">我会参加</label>
+                                    </div>
+                                    <div class="radio-option">
+                                        <input type="radio" id="not-attending" name="attendStatus" value="not-attending">
+                                        <label for="not-attending">遗憾不能参加</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" id="guest-count-group">
+                                <label for="guestCount">参加人数</label>
+                                <select id="guestCount" name="guestCount">
+                                    <option value="1">1人</option>
+                                    <option value="2">2人</option>
+                                    <option value="3">3人</option>
+                                    <option value="4">4人</option>
+                                    <option value="5">5人及以上</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="dietary">饮食禁忌或特殊要求（可选）</label>
+                                <textarea id="dietary" name="dietary" rows="2" placeholder="如有特殊饮食要求请告知我们"></textarea>
+                            </div>
+                            
+                            <div class="navigation-buttons">
+                                <button type="button" class="next-btn">下一步</button>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="message">祝福语</label>
-                            <textarea id="message" name="message" rows="4" required></textarea>
+                        
+                        <!-- 祝福表单部分 -->
+                        <div id="wishes-tab" class="form-tab">
+                            <div class="form-group">
+                                <label for="message">祝福语（可选）</label>
+                                <textarea id="message" name="message" rows="4" placeholder="请留下您对我们的祝福..."></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="photo">上传照片（可选，最多5张）</label>
+                                <div class="photo-upload-container">
+                                    <input type="file" id="photo" name="photo" accept="image/*" class="photo-input" multiple>
+                                    <label for="photo" class="photo-label">
+                                        <i class="fa fa-camera"></i>
+                                        <span>选择照片</span>
+                                    </label>
+                                    <div id="photo-preview" class="photo-preview"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="navigation-buttons">
+                                <button type="button" class="back-btn">返回</button>
+                                <button type="submit" class="submit-btn">提交</button>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="photo">上传照片</label>
-                            <input type="file" id="photo" name="photo" accept="image/*">
-                        </div>
-                        <button type="submit" class="submit-btn">发送祝福</button>
                     </form>
+                    
                     <div class="wishes-gallery">
-                        <h3>来自亲友的祝福</h3>
+                        <h3>宾客回复与祝福</h3>
                         <div id="wishes-list" class="wishes-list">
-                            <!-- 祝福将在这里显示 -->
+                            <!-- 回复和祝福将在这里显示 -->
                         </div>
                     </div>
                 </div>
