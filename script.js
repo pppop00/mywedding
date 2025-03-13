@@ -11,23 +11,52 @@ document.addEventListener('DOMContentLoaded', function() {
     // 检查Firebase是否已准备好
     if (window.firebaseServices && window.firebaseServices.db) {
         console.log('Firebase在DOMContentLoaded时已准备好，初始化数据功能');
-        // 初始化照片上传功能
+        // 初始化祝福表单功能
         initWishesForm();
         
         // 初始化问答功能
         initQuestionsForm();
+        
+        // 延迟执行迁移，确保Firebase已经完全初始化
+        setTimeout(migrateRSVPWishesData, 3000);
     } else {
         console.log('等待Firebase准备就绪...');
         // 等待Firebase准备就绪的事件
         document.addEventListener('firebase-ready', function() {
             console.log('Firebase准备就绪事件触发，初始化数据功能');
-            // 初始化照片上传功能
+            // 初始化祝福表单功能
             initWishesForm();
             
             // 初始化问答功能
             initQuestionsForm();
+            
+            // 延迟执行迁移，确保Firebase已经完全初始化
+            setTimeout(migrateRSVPWishesData, 3000);
         });
     }
+    
+    // 初始化分段控制器，即使Firebase尚未准备好
+    initRSVPCountdown();
+    initSegmentedControl();
+    initPhotoPreview();
+    
+    // 创建成功提交反馈覆盖层
+    createSuccessOverlay();
+    
+    // 切换分段控制器选中状态的CSS类
+    const segments = document.querySelectorAll('.segment-btn');
+    segments.forEach(segment => {
+        segment.addEventListener('click', function() {
+            if (this.getAttribute('data-target') === 'wishes-tab') {
+                document.querySelector('.segmented-control').classList.add('second-active');
+            } else {
+                document.querySelector('.segmented-control').classList.remove('second-active');
+            }
+        });
+    });
+    
+    // 初始化点击第一个选项卡
+    document.querySelector('.segment-btn[data-target="rsvp-tab"]').click();
 });
 
 // 倒计时功能
@@ -317,207 +346,99 @@ function initWishesForm() {
     
     console.log('已成功获取Firebase服务用于出席回复与祝福功能');
     
-    // 初始化分段控制器
-    initSegmentedControl();
-    
     // 初始化照片预览
     initPhotoPreview();
     
     // 创建成功反馈动画的HTML元素
     createSuccessOverlay();
     
-    // 初始化表单切换逻辑
-    function initSegmentedControl() {
-        const segments = document.querySelectorAll('.segment');
-        const tabs = document.querySelectorAll('.form-tab');
-        
-        segments.forEach(segment => {
-            segment.addEventListener('click', function() {
-                const target = this.getAttribute('data-target');
-                
-                // 更新分段控制器状态
-                segments.forEach(s => s.classList.remove('active'));
-                this.classList.add('active');
-                
-                // 更新表单选项卡
-                tabs.forEach(tab => {
-                    tab.classList.remove('active');
-                    if (tab.id === target) {
-                        tab.classList.add('active');
-                    }
-                });
-            });
-        });
-        
-        // 下一步按钮
-        const nextBtn = document.querySelector('.next-btn');
-        if (nextBtn) {
-            nextBtn.addEventListener('click', function() {
-                document.querySelector('[data-target="wishes-tab"]').click();
-            });
-        }
-        
-        // 返回按钮
-        const backBtn = document.querySelector('.back-btn');
-        if (backBtn) {
-            backBtn.addEventListener('click', function() {
-                document.querySelector('[data-target="rsvp-tab"]').click();
-            });
-        }
-        
-        // 根据出席状态显示/隐藏人数选择
-        const attendingRadio = document.getElementById('attending');
-        const notAttendingRadio = document.getElementById('not-attending');
-        const guestCountGroup = document.getElementById('guest-count-group');
-        
-        if (attendingRadio && notAttendingRadio && guestCountGroup) {
-            function updateGuestCountVisibility() {
-                if (attendingRadio.checked) {
-                    guestCountGroup.style.display = 'block';
-                } else {
-                    guestCountGroup.style.display = 'none';
-                }
-            }
-            
-            attendingRadio.addEventListener('change', updateGuestCountVisibility);
-            notAttendingRadio.addEventListener('change', updateGuestCountVisibility);
-            
-            // 初始状态
-            updateGuestCountVisibility();
-        }
-    }
+    // 初始化分段控制器
+    initSegmentedControl();
     
-    // 照片预览功能
+    // 初始化表单中的照片上传功能
     function initPhotoPreview() {
         const photoInput = document.getElementById('photo');
-        const photoPreview = document.getElementById('photo-preview');
+        const previewContainer = document.getElementById('photo-preview');
         
-        if (photoInput && photoPreview) {
-            photoInput.addEventListener('change', function(e) {
-                // 清空预览区域
-                photoPreview.innerHTML = '';
-                photoPreview.style.display = 'none';
+        // 全局变量，用于存储已上传的照片
+        window.uploadedPhotos = [];
+        
+        if (photoInput && previewContainer) {
+            photoInput.addEventListener('change', function() {
+                // 检查是否已经达到最大照片数量
+                const totalPhotos = window.uploadedPhotos.length + this.files.length;
+                const MAX_PHOTOS = 5;
                 
-                // 检查是否有选择的文件
-                if (this.files && this.files.length > 0) {
-                    // 限制最多5张照片
-                    const maxFiles = 5;
-                    const filesToProcess = Math.min(this.files.length, maxFiles);
-                    
-                    if (this.files.length > maxFiles) {
-                        showErrorMessage(`一次最多只能上传${maxFiles}张照片`);
-                    }
-                    
-                    // 创建照片预览的容器
-                    const previewGrid = document.createElement('div');
-                    previewGrid.className = 'photo-preview-grid';
-                    previewGrid.style.display = 'grid';
-                    previewGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(150px, 1fr))';
-                    previewGrid.style.gap = '10px';
-                    previewGrid.style.width = '100%';
-                    
-                    // 处理每个文件
-                    let loadedCount = 0;
-                    
-                    for (let i = 0; i < filesToProcess; i++) {
-                        const file = this.files[i];
-                        const reader = new FileReader();
-                        
-                        reader.onload = function(e) {
-                            const previewItem = document.createElement('div');
-                            previewItem.className = 'preview-item';
-                            previewItem.style.position = 'relative';
-                            previewItem.style.borderRadius = '8px';
-                            previewItem.style.overflow = 'hidden';
-                            
-                            const img = document.createElement('img');
-                            img.src = e.target.result;
-                            img.alt = `预览照片 ${i+1}`;
-                            img.style.width = '100%';
-                            img.style.height = '120px';
-                            img.style.objectFit = 'cover';
-                            img.style.borderRadius = '8px';
-                            
-                            // 添加删除按钮
-                            const removeBtn = document.createElement('button');
-                            removeBtn.type = 'button';
-                            removeBtn.className = 'remove-photo-btn';
-                            removeBtn.innerHTML = '×';
-                            removeBtn.style.position = 'absolute';
-                            removeBtn.style.top = '5px';
-                            removeBtn.style.right = '5px';
-                            removeBtn.style.backgroundColor = 'rgba(0,0,0,0.5)';
-                            removeBtn.style.color = 'white';
-                            removeBtn.style.border = 'none';
-                            removeBtn.style.borderRadius = '50%';
-                            removeBtn.style.width = '24px';
-                            removeBtn.style.height = '24px';
-                            removeBtn.style.cursor = 'pointer';
-                            removeBtn.style.display = 'flex';
-                            removeBtn.style.alignItems = 'center';
-                            removeBtn.style.justifyContent = 'center';
-                            removeBtn.style.fontSize = '16px';
-                            removeBtn.style.padding = '0';
-                            removeBtn.dataset.index = i;
-                            
-                            removeBtn.addEventListener('click', function() {
-                                previewItem.remove();
-                                if (previewGrid.children.length === 0) {
-                                    photoPreview.style.display = 'none';
-                                }
-                            });
-                            
-                            previewItem.appendChild(img);
-                            previewItem.appendChild(removeBtn);
-                            previewGrid.appendChild(previewItem);
-                            
-                            loadedCount++;
-                            if (loadedCount === filesToProcess) {
-                                photoPreview.style.display = 'block';
-                            }
-                        };
-                        
-                        reader.readAsDataURL(file);
-                    }
-                    
-                    photoPreview.appendChild(previewGrid);
-                    photoPreview.style.display = 'block';
+                if (totalPhotos > MAX_PHOTOS) {
+                    alert(`最多只能上传${MAX_PHOTOS}张照片`);
+                    return;
                 }
+                
+                // 显示预览区域
+                previewContainer.style.display = 'block';
+                
+                // 如果还没有预览网格，创建一个
+                if (!document.querySelector('.photo-preview-grid')) {
+                    previewContainer.innerHTML = '<div class="photo-preview-grid"></div>';
+                }
+                
+                const previewGrid = document.querySelector('.photo-preview-grid');
+                
+                // 添加新选择的照片到预览
+                for (let i = 0; i < this.files.length; i++) {
+                    const file = this.files[i];
+                    
+                    // 检查文件大小
+                    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+                    if (file.size > MAX_FILE_SIZE) {
+                        alert(`照片 "${file.name}" 大小超过5MB，请选择较小的照片`);
+                        continue;
+                    }
+                    
+                    // 添加到全局数组
+                    window.uploadedPhotos.push(file);
+                    
+                    // 创建预览
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const previewItem = document.createElement('div');
+                        previewItem.className = 'preview-item';
+                        
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.alt = '照片预览';
+                        
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'remove-photo-btn';
+                        removeBtn.innerHTML = '×';
+                        removeBtn.setAttribute('data-filename', file.name);
+                        removeBtn.addEventListener('click', function() {
+                            // 从全局数组中移除
+                            const index = window.uploadedPhotos.findIndex(f => f.name === file.name);
+                            if (index !== -1) {
+                                window.uploadedPhotos.splice(index, 1);
+                            }
+                            
+                            // 从预览中移除
+                            previewItem.remove();
+                            
+                            // 如果没有照片了，隐藏预览区域
+                            if (window.uploadedPhotos.length === 0) {
+                                previewContainer.style.display = 'none';
+                            }
+                        });
+                        
+                        previewItem.appendChild(img);
+                        previewItem.appendChild(removeBtn);
+                        previewGrid.appendChild(previewItem);
+                    };
+                    
+                    reader.readAsDataURL(file);
+                }
+                
+                // 重置input，允许选择相同的文件
+                this.value = '';
             });
-        }
-    }
-    
-    // 创建成功提交反馈覆盖层
-    function createSuccessOverlay() {
-        const overlay = document.createElement('div');
-        overlay.className = 'success-overlay';
-        overlay.id = 'success-overlay';
-        
-        overlay.innerHTML = `
-            <div class="success-animation">
-                <div class="success-icon">
-                    <svg viewBox="0 0 52 52" class="checkmark">
-                        <circle cx="26" cy="26" r="25" fill="none" class="checkmark-circle"/>
-                        <path fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" class="checkmark-check"/>
-                    </svg>
-                </div>
-                <h3>提交成功!</h3>
-                <p>感谢您的回复与祝福</p>
-            </div>
-        `;
-        
-        document.body.appendChild(overlay);
-    }
-    
-    // 显示成功动画
-    function showSuccessAnimation() {
-        const overlay = document.getElementById('success-overlay');
-        if (overlay) {
-            overlay.classList.add('active');
-            
-            setTimeout(() => {
-                overlay.classList.remove('active');
-            }, 3000);
         }
     }
     
@@ -655,154 +576,154 @@ function initWishesForm() {
     setupRSVPWishesListener();
     
     if (rsvpWishesForm) {
-        rsvpWishesForm.addEventListener('submit', async function(e) {
+        rsvpWishesForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // 获取表单数据
-            const name = document.getElementById('name').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-            const attendStatus = document.querySelector('input[name="attendStatus"]:checked').value;
-            const guestCount = document.getElementById('guestCount').value;
-            const dietary = document.getElementById('dietary').value.trim();
-            const message = document.getElementById('message').value.trim();
-            const photoInput = document.getElementById('photo');
+            // 获取提交按钮
+            const submitBtn = document.querySelector('.submit-btn');
             
-            if (!name || !email) {
-                showErrorMessage('请填写您的姓名和联系邮箱');
-                return;
-            }
-            
-            // 验证邮箱格式
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                showErrorMessage('请输入有效的邮箱地址');
-                return;
-            }
-            
-            // 禁用提交按钮防止重复提交
-            const submitBtn = rsvpWishesForm.querySelector('.submit-btn');
+            // 禁用提交按钮，防止重复提交
             submitBtn.disabled = true;
-            submitBtn.textContent = '提交中...';
+            submitBtn.innerHTML = '<div class="spinner"></div>';
             
-            try {
-                // 处理照片上传
-                let photoURLs = [];
+            // 获取表单数据
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                attending: document.getElementById('attending').checked,
+                guestCount: document.getElementById('attending').checked ? parseInt(document.getElementById('guest-count').value) : 0,
+                dietaryRestrictions: document.getElementById('dietary-restrictions').value,
+                message: document.getElementById('message').value,
+                date: new Date().toLocaleDateString('zh-CN')
+            };
+            
+            console.log('收集的表单数据:', formData);
+            
+            // 获取已上传的照片文件
+            const photoFiles = uploadedPhotos;
+            
+            // 如果有照片要上传
+            if (photoFiles && photoFiles.length > 0) {
+                // 显示上传进度
+                const progressContainer = document.createElement('div');
+                progressContainer.className = 'progress-container';
+                progressContainer.innerHTML = `
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-text">上传照片: 0/${photoFiles.length}</div>
+                `;
+                document.getElementById('photo-preview').appendChild(progressContainer);
                 
-                if (photoInput.files && photoInput.files.length > 0) {
-                    // 限制最多5张照片
-                    const maxFiles = 5;
-                    const filesToProcess = Math.min(photoInput.files.length, maxFiles);
+                // 上传所有照片
+                const uploadPromises = [];
+                const photoUrls = [];
+                
+                for (let i = 0; i < photoFiles.length; i++) {
+                    const file = photoFiles[i];
+                    const storageRef = storage.ref();
+                    const photoRef = storageRef.child(`wishes-photos/${Date.now()}-${file.name}`);
                     
-                    // 显示加载指示器
-                    const loadingIndicator = createLoadingIndicator();
-                    document.body.appendChild(loadingIndicator);
+                    // 创建上传任务
+                    const uploadTask = photoRef.put(file);
                     
-                    // 依次上传每张照片
-                    for (let i = 0; i < filesToProcess; i++) {
-                        const file = photoInput.files[i];
-                        
-                        // 文件大小限制（5MB）
-                        const MAX_FILE_SIZE = 5 * 1024 * 1024;
-                        
-                        if (file.size > MAX_FILE_SIZE) {
-                            showErrorMessage(`图片 ${i+1} 大小超过5MB，请重新选择较小的图片`);
-                            continue;
-                        }
-                        
-                        // 更新进度提示
-                        loadingIndicator.querySelector('p').textContent = `正在上传照片 ${i+1}/${filesToProcess}...`;
-                        
-                        // 创建唯一的文件名
-                        const timestamp = new Date().getTime();
-                        const fileName = `rsvp_wishes/${timestamp}_${i}_${file.name}`;
-                        
-                        // 上传到Firebase Storage
-                        try {
-                            const storageRef = storage.ref(fileName);
-                            const uploadTask = storageRef.put(file);
-                            
-                            // 等待上传完成
-                            await new Promise((resolve, reject) => {
-                                uploadTask.on('state_changed', 
-                                    (snapshot) => {
-                                        // 更新进度
-                                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                                        updateProgress(loadingIndicator, progress);
-                                    }, 
-                                    (error) => {
-                                        reject(error);
-                                    }, 
-                                    async () => {
-                                        // 上传完成，获取下载URL
-                                        try {
-                                            const photoURL = await uploadTask.snapshot.ref.getDownloadURL();
-                                            photoURLs.push(photoURL);
-                                            resolve();
-                                        } catch (error) {
-                                            reject(error);
-                                        }
-                                    }
-                                );
-                            });
-                        } catch (error) {
-                            console.error(`上传照片 ${i+1} 失败:`, error);
-                            showErrorMessage(`上传照片 ${i+1} 失败，但我们会继续处理其他照片`);
-                        }
-                    }
-                    
-                    // 所有照片都已处理，现在提交表单数据
-                    await addRSVPWishToFirebase({
-                        name,
-                        email,
-                        phone,
-                        attendStatus,
-                        guestCount: attendStatus === 'attending' ? parseInt(guestCount) : 0,
-                        dietary,
-                        message,
-                        photoURLs: photoURLs.length > 0 ? photoURLs : null
+                    // 创建Promise以等待所有上传完成
+                    const promise = new Promise((resolve, reject) => {
+                        // 监听上传进度
+                        uploadTask.on('state_changed', 
+                            (snapshot) => {
+                                // 更新当前照片的上传进度
+                                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                console.log(`照片 ${i+1}/${photoFiles.length} 上传进度: ${progress.toFixed(1)}%`);
+                                
+                                // 更新总体进度
+                                const totalProgress = ((i / photoFiles.length) * 100) + (progress / photoFiles.length);
+                                progressContainer.querySelector('.progress').style.width = `${totalProgress}%`;
+                                progressContainer.querySelector('.progress-text').textContent = `上传照片: ${i}/${photoFiles.length}`;
+                            }, 
+                            (error) => {
+                                // 上传失败
+                                console.error("照片上传失败:", error);
+                                reject(error);
+                            }, 
+                            () => {
+                                // 上传成功，获取下载URL
+                                uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                                    photoUrls.push(downloadURL);
+                                    
+                                    // 更新进度文本
+                                    progressContainer.querySelector('.progress-text').textContent = `上传照片: ${i+1}/${photoFiles.length}`;
+                                    
+                                    resolve();
+                                });
+                            }
+                        );
                     });
                     
-                    // 移除加载指示器
-                    document.body.removeChild(loadingIndicator);
-                    
-                    // 重置表单
-                    rsvpWishesForm.reset();
-                    document.getElementById('photo-preview').innerHTML = '';
-                    document.getElementById('photo-preview').style.display = 'none';
-                    document.querySelector('[data-target="rsvp-tab"]').click();
-                    
-                    // 显示成功动画
-                    showSuccessAnimation();
-                } else {
-                    // 无照片的回复与祝福
-                    await addRSVPWishToFirebase({
-                        name,
-                        email,
-                        phone,
-                        attendStatus,
-                        guestCount: attendStatus === 'attending' ? parseInt(guestCount) : 0,
-                        dietary,
-                        message,
-                        photoURLs: null
-                    });
-                    
-                    // 重置表单
-                    rsvpWishesForm.reset();
-                    document.querySelector('[data-target="rsvp-tab"]').click();
-                    
-                    // 显示成功动画
-                    showSuccessAnimation();
+                    uploadPromises.push(promise);
                 }
                 
-                // 恢复提交按钮
-                submitBtn.disabled = false;
-                submitBtn.textContent = '提交';
-            } catch (error) {
-                console.error('提交回复与祝福时出错:', error);
-                showErrorMessage('提交失败，请重试');
-                submitBtn.disabled = false;
-                submitBtn.textContent = '提交';
+                // 等待所有照片上传完成
+                Promise.all(uploadPromises)
+                    .then(() => {
+                        // 保存表单数据和照片URL到Firebase
+                        return saveFormDataWithPhotos(formData, photoUrls);
+                    })
+                    .then((success) => {
+                        if (success) {
+                            // 重置表单
+                            rsvpWishesForm.reset();
+                            document.getElementById('photo-preview').innerHTML = '';
+                            document.getElementById('photo-preview').style.display = 'none';
+                            uploadedPhotos = []; // 重置上传照片数组
+                            
+                            // 切换到祝福留言选项卡显示提交结果
+                            document.querySelector('[data-target="wishes-tab"]').click();
+
+                            // 显示成功动画
+                            showSuccessAnimation();
+                        } else {
+                            // 显示错误信息
+                            alert('提交失败，请稍后再试');
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("提交表单时出错:", error);
+                        alert('提交失败，请稍后再试');
+                    })
+                    .finally(() => {
+                        // 恢复提交按钮
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '提交';
+                    });
+            } else {
+                // 无照片，直接保存表单数据
+                saveFormData(formData)
+                    .then((success) => {
+                        if (success) {
+                            // 重置表单
+                            rsvpWishesForm.reset();
+                            
+                            // 切换到祝福留言选项卡显示提交结果
+                            document.querySelector('[data-target="wishes-tab"]').click();
+
+                            // 显示成功动画
+                            showSuccessAnimation();
+                        } else {
+                            // 显示错误信息
+                            alert('提交失败，请稍后再试');
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("提交表单时出错:", error);
+                        alert('提交失败，请稍后再试');
+                    })
+                    .finally(() => {
+                        // 恢复提交按钮
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '提交';
+                    });
             }
         });
     }
@@ -812,11 +733,8 @@ function initWishesForm() {
         try {
             console.log('正在从Firebase加载回复与祝福...');
             
-            // 尝试从旧集合加载
-            await loadFromCollection("wishes");
-            
-            // 从新集合加载
-            await loadFromCollection("rsvp_wishes");
+            // 直接从rsvp-wishes集合加载
+            await loadFromCollection("rsvp-wishes");
             
         } catch (error) {
             console.error('加载回复与祝福时出错:', error);
@@ -861,11 +779,8 @@ function initWishesForm() {
     
     // 设置实时监听
     function setupRSVPWishesListener() {
-        // 监听旧的wishes集合
-        setupCollectionListener("wishes");
-        
-        // 监听新的rsvp_wishes集合
-        setupCollectionListener("rsvp_wishes");
+        // 只监听rsvp-wishes集合
+        setupCollectionListener("rsvp-wishes");
         
         function setupCollectionListener(collectionName) {
             const collectionRef = collection(collectionName);
@@ -941,18 +856,17 @@ function initWishesForm() {
                 name: data.name,
                 email: data.email,
                 phone: data.phone || null,
-                attendStatus: data.attendStatus,
+                attending: data.attendStatus === 'attending',  // 转换为布尔值
                 guestCount: data.guestCount,
-                dietary: data.dietary || null,
+                dietaryRestrictions: data.dietary || null,
                 message: data.message || null,
-                photoURLs: data.photoURLs,
+                photoUrls: data.photoURLs || [],
                 date: new Date().toLocaleDateString('zh-CN'),
                 timestamp: serverTimestamp(),
-                responseStatus: 'pending'
             };
             
             // 添加到Firebase
-            const rsvpWishesRef = collection("rsvp_wishes");
+            const rsvpWishesRef = collection("rsvp-wishes");
             const docRef = await addDoc(rsvpWishesRef, newRSVPWish);
             console.log('回复与祝福已保存到Firebase, ID:', docRef.id);
             
@@ -983,22 +897,22 @@ function initWishesForm() {
         let contentHTML = '<div class="wish-content">';
         
         // 根据集合类型和数据显示不同内容
-        if (collectionType === "rsvp_wishes") {
+        if (collectionType === "rsvp-wishes") {
             // 显示RSVP状态
-            const statusText = data.attendStatus === 'attending' ? 
+            const statusText = data.attending ? 
                 `<span class="status attending">参加婚礼</span>` : 
                 `<span class="status not-attending">无法参加</span>`;
             
             contentHTML += `<div class="rsvp-status">${statusText}</div>`;
             
             // 如果参加，显示人数
-            if (data.attendStatus === 'attending' && data.guestCount) {
+            if (data.attending && data.guestCount) {
                 contentHTML += `<div class="guest-count">参加人数: ${data.guestCount}人</div>`;
             }
             
             // 显示特殊要求（如果有）
-            if (data.dietary) {
-                contentHTML += `<div class="dietary-notes">饮食要求: ${data.dietary}</div>`;
+            if (data.dietaryRestrictions) {
+                contentHTML += `<div class="dietary-notes">饮食要求: ${data.dietaryRestrictions}</div>`;
             }
         }
         
@@ -1013,10 +927,10 @@ function initWishesForm() {
         let photoHTML = '';
         
         // 处理新版多照片格式
-        if (data.photoURLs && Array.isArray(data.photoURLs) && data.photoURLs.length > 0) {
+        if (data.photoUrls && Array.isArray(data.photoUrls) && data.photoUrls.length > 0) {
             photoHTML = '<div class="wish-photos-grid">';
             
-            data.photoURLs.forEach(url => {
+            data.photoUrls.forEach(url => {
                 photoHTML += `
                     <div class="wish-photo">
                         <img src="${url}" alt="${data.name}的照片" loading="lazy">
@@ -1520,4 +1434,296 @@ function showErrorMessage(message) {
             }
         }, 300);
     }, 4000);
+}
+
+// 初始化分段控制器
+function initSegmentedControl() {
+    const segments = document.querySelectorAll('.segment-btn');
+    const contentTabs = document.querySelectorAll('.content-tab');
+    const segmentedControl = document.querySelector('.segmented-control');
+    
+    segments.forEach((segment, index) => {
+        segment.addEventListener('click', () => {
+            // 移除所有segment的active类
+            segments.forEach(s => s.classList.remove('active'));
+            
+            // 添加当前点击segment的active类
+            segment.classList.add('active');
+            
+            // 根据点击的索引更新背景滑块位置
+            if (index === 0) {
+                segmentedControl.classList.remove('second-active');
+            } else {
+                segmentedControl.classList.add('second-active');
+            }
+            
+            // 隐藏所有content tab
+            contentTabs.forEach(tab => tab.classList.remove('active'));
+            
+            // 显示对应的content tab
+            const targetId = segment.getAttribute('data-target');
+            document.getElementById(targetId).classList.add('active');
+            
+            // 如果切换到宾客留言选项卡，加载宾客留言
+            if (targetId === 'wishes-tab') {
+                loadGuestWishes();
+            }
+        });
+    });
+    
+    // 显示或隐藏参加人数选择
+    const attendingRadio = document.getElementById('attending');
+    const notAttendingRadio = document.getElementById('not-attending');
+    const guestCountContainer = document.getElementById('guest-count-container');
+    
+    function updateGuestCountVisibility() {
+        if (attendingRadio.checked) {
+            guestCountContainer.style.display = 'block';
+        } else {
+            guestCountContainer.style.display = 'none';
+        }
+    }
+    
+    // 初始设置
+    updateGuestCountVisibility();
+    
+    // 添加事件监听器
+    attendingRadio.addEventListener('change', updateGuestCountVisibility);
+    notAttendingRadio.addEventListener('change', updateGuestCountVisibility);
+    
+    // 默认选中第一个选项卡
+    segments[0].click();
+}
+
+// 加载宾客留言
+function loadGuestWishes() {
+    const wishesContainer = document.getElementById('guest-wishes-container');
+    wishesContainer.innerHTML = '<div class="loading">加载祝福中...</div>';
+    
+    // 从Firebase获取祝福留言
+    db.collection("rsvp-wishes").orderBy("timestamp", "desc").get()
+        .then((querySnapshot) => {
+            let wishesHTML = '';
+            
+            if (querySnapshot.empty) {
+                wishesContainer.innerHTML = '<div class="no-wishes">目前还没有祝福留言，成为第一个留言的人吧！</div>';
+                return;
+            }
+            
+            console.log(`从rsvp-wishes加载了 ${querySnapshot.size} 条祝福留言`);
+            
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                console.log('祝福留言数据:', data);
+                
+                const hasPhotos = data.photoUrls && data.photoUrls.length > 0;
+                const rsvpStatus = data.attending !== undefined ? 
+                    (data.attending ? '<span class="status attending">参加</span>' : '<span class="status not-attending">无法参加</span>') : '';
+                const guestCount = data.attending && data.guestCount ? 
+                    `<div class="guest-count">共 ${data.guestCount} 人</div>` : '';
+                const dietaryNotes = data.dietaryRestrictions ? 
+                    `<div class="dietary-notes">饮食需求: ${data.dietaryRestrictions}</div>` : '';
+                
+                let photosHTML = '';
+                if (hasPhotos) {
+                    photosHTML += '<div class="wish-photos-grid">';
+                    data.photoUrls.forEach(url => {
+                        photosHTML += `<div class="wish-photo"><img src="${url}" alt="来自 ${data.name} 的照片"></div>`;
+                    });
+                    photosHTML += '</div>';
+                }
+                
+                wishesHTML += `
+                    <div class="wish-card">
+                        <div class="wish-header">
+                            <div class="wish-author">${data.name}</div>
+                            ${rsvpStatus}
+                        </div>
+                        ${guestCount}
+                        ${dietaryNotes}
+                        <div class="wish-message">${data.message || ''}</div>
+                        ${photosHTML}
+                        <div class="wish-date">${formatTimestamp(data.timestamp)}</div>
+                    </div>
+                `;
+            });
+            
+            wishesContainer.innerHTML = wishesHTML;
+        })
+        .catch((error) => {
+            console.error("Error loading wishes: ", error);
+            wishesContainer.innerHTML = '<div class="error">加载祝福时出错，请稍后再试</div>';
+        });
+}
+
+// 格式化时间戳为易读格式
+function formatTimestamp(timestamp) {
+    if (!timestamp) return '';
+    
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// 保存表单数据和照片URL到Firebase
+function saveFormDataWithPhotos(formData, photoUrls) {
+    // 组合表单数据和照片URL，确保使用正确的字段名
+    const dataToSave = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || '',
+        attending: formData.attending,
+        guestCount: parseInt(formData.guestCount) || 0,
+        dietaryRestrictions: formData.dietaryRestrictions || '',
+        message: formData.message || '',
+        photoUrls: photoUrls || [],
+        date: formData.date || new Date().toLocaleDateString('zh-CN'),
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    console.log('保存到Firebase的数据:', dataToSave);
+    
+    // 保存到Firebase
+    return db.collection("rsvp-wishes").add(dataToSave)
+        .then(() => {
+            console.log("表单数据和照片URL保存成功");
+            return true;
+        })
+        .catch(error => {
+            console.error("保存表单数据和照片URL时出错:", error);
+            return false;
+        });
+}
+
+// 保存表单数据（无照片）到Firebase
+function saveFormData(formData) {
+    // 添加时间戳，确保使用正确的字段名
+    const dataToSave = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || '',
+        attending: formData.attending,
+        guestCount: parseInt(formData.guestCount) || 0,
+        dietaryRestrictions: formData.dietaryRestrictions || '',
+        message: formData.message || '',
+        photoUrls: [],
+        date: formData.date || new Date().toLocaleDateString('zh-CN'),
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    console.log('保存到Firebase的数据:', dataToSave);
+    
+    // 保存到Firebase
+    return db.collection("rsvp-wishes").add(dataToSave)
+        .then(() => {
+            console.log("表单数据保存成功");
+            return true;
+        })
+        .catch(error => {
+            console.error("保存表单数据时出错:", error);
+            return false;
+        });
+}
+
+// 创建成功提交反馈覆盖层
+function createSuccessOverlay() {
+    // 如果已经存在，则不再创建
+    if (document.getElementById('success-overlay')) {
+        return;
+    }
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'success-overlay';
+    overlay.id = 'success-overlay';
+    
+    overlay.innerHTML = `
+        <div class="success-animation">
+            <div class="success-icon">
+                <svg viewBox="0 0 52 52" class="checkmark">
+                    <circle cx="26" cy="26" r="25" fill="none" class="checkmark-circle"/>
+                    <path fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" class="checkmark-check"/>
+                </svg>
+            </div>
+            <h3>提交成功!</h3>
+            <p>感谢您的回复与祝福</p>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+}
+
+// 显示成功动画
+function showSuccessAnimation() {
+    const overlay = document.getElementById('success-overlay');
+    if (overlay) {
+        overlay.classList.add('active');
+        
+        setTimeout(() => {
+            overlay.classList.remove('active');
+        }, 3000);
+    }
+}
+
+// 迁移数据从rsvp_wishes到rsvp-wishes
+function migrateRSVPWishesData() {
+    console.log('检查是否需要迁移数据...');
+    
+    // 检查是否存在旧的集合
+    firebase.firestore().collection('rsvp_wishes').get()
+        .then((snapshot) => {
+            if (snapshot.empty) {
+                console.log('没有找到旧数据，无需迁移');
+                return;
+            }
+            
+            console.log(`找到 ${snapshot.size} 条旧数据，开始迁移...`);
+            
+            // 迁移数据
+            const batch = firebase.firestore().batch();
+            const promises = [];
+            
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                
+                // 转换数据格式
+                const newData = {
+                    name: data.name,
+                    email: data.email,
+                    phone: data.phone || null,
+                    attending: data.attendStatus === 'attending' || data.attending === true,
+                    guestCount: parseInt(data.guestCount) || 0,
+                    dietaryRestrictions: data.dietary || data.dietaryRestrictions || null,
+                    message: data.message || null,
+                    photoUrls: data.photoURLs || data.photoUrls || [],
+                    date: data.date || new Date().toLocaleDateString('zh-CN'),
+                    timestamp: data.timestamp || firebase.firestore.FieldValue.serverTimestamp(),
+                    migrated: true
+                };
+                
+                // 添加到新集合
+                const promise = firebase.firestore().collection('rsvp-wishes').add(newData)
+                    .then(() => {
+                        console.log(`已迁移文档ID: ${doc.id}`);
+                        return firebase.firestore().collection('rsvp_wishes').doc(doc.id).delete();
+                    })
+                    .then(() => {
+                        console.log(`已删除旧文档ID: ${doc.id}`);
+                    });
+                
+                promises.push(promise);
+            });
+            
+            return Promise.all(promises);
+        })
+        .then(() => {
+            console.log('数据迁移完成');
+        })
+        .catch((error) => {
+            console.error('迁移数据时出错:', error);
+        });
 }

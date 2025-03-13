@@ -189,15 +189,15 @@
                 <p class="section-description">请在婚礼举办前告知我们您的出席情况，并留下您的祝福</p>
                 
                 <div class="segmented-control">
-                    <button class="segment active" data-target="rsvp-tab">出席信息</button>
-                    <button class="segment" data-target="wishes-tab">祝福留言</button>
-                    <div class="segment-indicator"></div>
+                    <button class="segment-btn active" data-target="rsvp-tab">回复信息</button>
+                    <button class="segment-btn" data-target="wishes-tab">祝福留言</button>
                 </div>
                 
-                <div class="rsvp-wishes-container">
-                    <form id="rsvp-wishes-form" class="rsvp-wishes-form">
-                        <!-- RSVP表单部分 -->
-                        <div id="rsvp-tab" class="form-tab active">
+                <div id="rsvp-tab" class="content-tab active">
+                    <div class="rsvp-wishes-container">
+                        <form id="rsvp-wishes-form" class="rsvp-wishes-form">
+                            <h3>填写您的祝福</h3>
+                            <!-- 基本信息 -->
                             <div class="form-group">
                                 <label for="name">您的姓名</label>
                                 <input type="text" id="name" name="name" required placeholder="请输入您的姓名">
@@ -227,9 +227,9 @@
                                 </div>
                             </div>
                             
-                            <div class="form-group" id="guest-count-group">
-                                <label for="guestCount">参加人数</label>
-                                <select id="guestCount" name="guestCount">
+                            <div class="form-group" id="guest-count-container">
+                                <label for="guest-count">参加人数</label>
+                                <select id="guest-count" name="guest-count">
                                     <option value="1">1人</option>
                                     <option value="2">2人</option>
                                     <option value="3">3人</option>
@@ -239,17 +239,10 @@
                             </div>
                             
                             <div class="form-group">
-                                <label for="dietary">饮食禁忌或特殊要求（可选）</label>
-                                <textarea id="dietary" name="dietary" rows="2" placeholder="如有特殊饮食要求请告知我们"></textarea>
+                                <label for="dietary-restrictions">饮食禁忌或特殊要求（可选）</label>
+                                <textarea id="dietary-restrictions" name="dietary-restrictions" rows="2" placeholder="如有特殊饮食要求请告知我们"></textarea>
                             </div>
                             
-                            <div class="navigation-buttons">
-                                <button type="button" class="next-btn">下一步</button>
-                            </div>
-                        </div>
-                        
-                        <!-- 祝福表单部分 -->
-                        <div id="wishes-tab" class="form-tab">
                             <div class="form-group">
                                 <label for="message">祝福语（可选）</label>
                                 <textarea id="message" name="message" rows="4" placeholder="请留下您对我们的祝福..."></textarea>
@@ -267,17 +260,18 @@
                                 </div>
                             </div>
                             
-                            <div class="navigation-buttons">
-                                <button type="button" class="back-btn">返回</button>
-                                <button type="submit" class="submit-btn">提交</button>
-                            </div>
-                        </div>
-                    </form>
-                    
+                            <button type="submit" class="submit-btn">提交</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="wishes-tab" class="content-tab">
                     <div class="wishes-gallery">
-                        <h3>宾客回复与祝福</h3>
-                        <div id="wishes-list" class="wishes-list">
-                            <!-- 回复和祝福将在这里显示 -->
+                        <h3>宾客祝福</h3>
+                        <div id="guest-wishes-container" class="guest-wishes-container">
+                            <div id="wishes-list" class="wishes-list">
+                                <!-- 回复和祝福将在这里显示 -->
+                            </div>
                         </div>
                     </div>
                 </div>
