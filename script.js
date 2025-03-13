@@ -438,25 +438,125 @@ function initQuestionsForm() {
     let editingQuestionId = null;
     const originalSubmitBtn = questionForm.querySelector('.ask-btn').textContent;
     
-    // 加载已有问题 (这里可以替换为实际的数据存储逻辑)
-    const savedQuestions = localStorage.getItem('weddingQuestions');
-    if (savedQuestions) {
+    // 确保Firebase已经加载
+    if (!window.firebaseServices) {
+        console.error('Firebase服务尚未加载，请稍后再试');
+        return;
+    }
+    
+    const { 
+        db, 
+        collection, 
+        addDoc, 
+        getDocs, 
+        getDoc,
+        doc, 
+        deleteDoc, 
+        updateDoc, 
+        query, 
+        orderBy, 
+        onSnapshot,
+        serverTimestamp,
+        where
+    } = window.firebaseServices;
+    
+    // 清空示例问题
+    questionsList.innerHTML = '';
+    
+    // 从Firebase加载问题
+    loadQuestionsFromFirebase();
+    
+    // 实时监听新问题
+    setupQuestionsListener();
+    
+    // 从Firebase加载问题
+    async function loadQuestionsFromFirebase() {
         try {
-            const questions = JSON.parse(savedQuestions);
+            console.log('正在从Firebase加载问题...');
             
-            // 清空示例问题
+            // 创建一个按时间戳降序排序的查询
+            const q = query(
+                collection(db, "questions"),
+                orderBy("timestamp", "desc")
+            );
+            
+            // 执行查询
+            const querySnapshot = await getDocs(q);
+            
+            if (querySnapshot.empty) {
+                console.log('没有找到问题');
+                return;
+            }
+            
+            console.log(`从Firebase加载了 ${querySnapshot.size} 个问题`);
+            
+            // 清空问题列表
             questionsList.innerHTML = '';
             
-            // 添加已保存的问题
-            questions.forEach(q => {
-                const questionElement = createQuestionElement(q);
+            // 添加每个问题到列表
+            querySnapshot.forEach((docSnapshot) => {
+                const questionData = docSnapshot.data();
+                questionData.id = docSnapshot.id;  // 使用Firebase的文档ID
+                
+                // 创建问题元素并添加到列表
+                const questionElement = createQuestionElement(questionData);
                 questionsList.appendChild(questionElement);
             });
-            
-            console.log(`已加载 ${questions.length} 个已保存的问题`);
-        } catch (e) {
-            console.error('读取问题失败', e);
+        } catch (error) {
+            console.error('加载问题时出错:', error);
         }
+    }
+    
+    // 设置实时监听
+    function setupQuestionsListener() {
+        const q = query(
+            collection(db, "questions"),
+            orderBy("timestamp", "desc")
+        );
+        
+        onSnapshot(q, (querySnapshot) => {
+            // 处理刚刚添加的新问题
+            querySnapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    const questionData = change.doc.data();
+                    questionData.id = change.doc.id;
+                    
+                    // 检查是否已存在此问题（避免重复添加）
+                    const existingQuestion = document.querySelector(`.question-item[data-id="${questionData.id}"]`);
+                    if (!existingQuestion) {
+                        console.log('新问题已添加:', questionData.id);
+                        const questionElement = createQuestionElement(questionData);
+                        questionsList.insertBefore(questionElement, questionsList.firstChild);
+                    }
+                }
+                
+                if (change.type === "modified") {
+                    const questionData = change.doc.data();
+                    questionData.id = change.doc.id;
+                    
+                    // 更新已存在的问题
+                    const questionElement = document.querySelector(`.question-item[data-id="${questionData.id}"]`);
+                    if (questionElement) {
+                        console.log('问题已更新:', questionData.id);
+                        const updatedElement = createQuestionElement(questionData);
+                        questionElement.replaceWith(updatedElement);
+                    }
+                }
+                
+                if (change.type === "removed") {
+                    const questionId = change.doc.id;
+                    
+                    // 移除已删除的问题
+                    const questionElement = document.querySelector(`.question-item[data-id="${questionId}"]`);
+                    if (questionElement) {
+                        console.log('问题已删除:', questionId);
+                        questionElement.remove();
+                    }
+                }
+            });
+        }, (error) => {
+            console.error('监听问题变化时出错:', error);
+        });
     }
     
     // 提交问题表单
@@ -479,8 +579,8 @@ function initQuestionsForm() {
         
         if (name && question) {
             if (isEditing && editingQuestionId) {
-                // 更新现有问题
-                updateQuestion(editingQuestionId, name, question);
+                // 更新Firebase中的问题
+                updateQuestionInFirebase(editingQuestionId, name, question);
                 
                 // 重置编辑状态
                 isEditing = false;
@@ -491,22 +591,8 @@ function initQuestionsForm() {
                 showSuccessMessage(questionForm, '问题已更新！');
                 console.log('问题已更新');
             } else {
-                // 创建新问题对象
-                const newQuestion = {
-                    id: Date.now(), // 使用时间戳作为唯一ID
-                    name: name,
-                    question: question,
-                    date: new Date().toLocaleDateString('zh-CN'),
-                    answer: null,
-                    answerDate: null
-                };
-                
-                // 保存到本地存储
-                saveQuestion(newQuestion);
-                
-                // 创建DOM元素并添加到列表
-                const questionElement = createQuestionElement(newQuestion);
-                questionsList.insertBefore(questionElement, questionsList.firstChild);
+                // 添加问题到Firebase
+                addQuestionToFirebase(name, question);
                 
                 // 显示成功消息
                 showSuccessMessage(questionForm, '问题提交成功！我们会尽快回复。');
@@ -520,18 +606,57 @@ function initQuestionsForm() {
         }
     });
     
+    // 添加问题到Firebase
+    async function addQuestionToFirebase(name, questionText) {
+        try {
+            // 创建新问题对象
+            const newQuestion = {
+                name: name,
+                question: questionText,
+                date: new Date().toLocaleDateString('zh-CN'),
+                timestamp: serverTimestamp(), // 使用服务器时间戳
+                answer: null,
+                answerDate: null,
+                answered: false
+            };
+            
+            // 添加到Firebase
+            const docRef = await addDoc(collection(db, "questions"), newQuestion);
+            console.log('问题已保存到Firebase, ID:', docRef.id);
+            
+            // 不需要手动添加DOM元素，监听器会处理这个
+        } catch (error) {
+            console.error('添加问题到Firebase时出错:', error);
+        }
+    }
+    
+    // 更新Firebase中的问题
+    async function updateQuestionInFirebase(questionId, name, questionText) {
+        try {
+            const questionRef = doc(db, "questions", questionId);
+            
+            await updateDoc(questionRef, {
+                name: name,
+                question: questionText,
+                date: new Date().toLocaleDateString('zh-CN'),
+                updatedAt: serverTimestamp()
+            });
+            
+            console.log('问题已在Firebase中更新');
+            
+            // 不需要手动更新DOM，监听器会处理这个
+        } catch (error) {
+            console.error('更新Firebase中的问题时出错:', error);
+        }
+    }
+    
     // 编辑和删除问题功能
     questionsList.addEventListener('click', function(e) {
         // 删除按钮
         if (e.target.classList.contains('delete-btn')) {
             const questionId = e.target.getAttribute('data-id');
             if (questionId && confirm('确定要删除这个问题吗？')) {
-                deleteQuestion(questionId);
-                const questionElement = e.target.closest('.question-item');
-                if (questionElement) {
-                    questionElement.remove();
-                    console.log(`问题已删除: ${questionId}`);
-                }
+                deleteQuestionFromFirebase(questionId);
             }
         }
         
@@ -544,63 +669,98 @@ function initQuestionsForm() {
         }
     });
     
-    // 加载问题到表单进行编辑
-    function loadQuestionForEdit(questionId) {
-        const savedQuestions = localStorage.getItem('weddingQuestions');
-        if (savedQuestions) {
-            try {
-                const questions = JSON.parse(savedQuestions);
-                const question = questions.find(q => q.id == questionId);
-                
-                if (question) {
-                    // 将问题数据填充到表单
-                    document.getElementById('questioner-name').value = question.name;
-                    document.getElementById('question-text').value = question.question;
-                    
-                    // 更新按钮文本和状态
-                    questionForm.querySelector('.ask-btn').textContent = '更新问题';
-                    isEditing = true;
-                    editingQuestionId = questionId;
-                    
-                    // 滚动到表单位置
-                    questionForm.scrollIntoView({ behavior: 'smooth' });
-                    
-                    console.log(`加载问题进行编辑: ${questionId}`);
-                }
-            } catch (e) {
-                console.error('加载问题进行编辑失败', e);
-            }
+    // 从Firebase删除问题
+    async function deleteQuestionFromFirebase(questionId) {
+        try {
+            await deleteDoc(doc(db, "questions", questionId));
+            console.log('问题已从Firebase删除');
+            
+            // 不需要手动从DOM移除，监听器会处理这个
+        } catch (error) {
+            console.error('从Firebase删除问题时出错:', error);
         }
     }
     
-    // 更新问题
-    function updateQuestion(questionId, name, questionText) {
+    // 加载问题到表单进行编辑
+    async function loadQuestionForEdit(questionId) {
         try {
-            const savedQuestions = localStorage.getItem('weddingQuestions');
-            if (savedQuestions) {
-                let questions = JSON.parse(savedQuestions);
+            const questionRef = doc(db, "questions", questionId);
+            const docSnap = await getDoc(questionRef);
+            
+            if (docSnap.exists()) {
+                const questionData = docSnap.data();
                 
-                // 查找并更新问题
-                const index = questions.findIndex(q => q.id == questionId);
-                if (index !== -1) {
-                    questions[index].name = name;
-                    questions[index].question = questionText;
-                    
-                    // 保存回localStorage
-                    localStorage.setItem('weddingQuestions', JSON.stringify(questions));
-                    
-                    // 更新DOM
-                    const questionElement = document.querySelector(`.question-item[data-id="${questionId}"]`);
-                    if (questionElement) {
-                        questionElement.querySelector('.questioner').textContent = name;
-                        questionElement.querySelector('.question-content').textContent = questionText;
-                    }
-                }
+                // 将问题数据填充到表单
+                document.getElementById('questioner-name').value = questionData.name;
+                document.getElementById('question-text').value = questionData.question;
+                
+                // 更新按钮文本和状态
+                questionForm.querySelector('.ask-btn').textContent = '更新问题';
+                isEditing = true;
+                editingQuestionId = questionId;
+                
+                // 滚动到表单位置
+                questionForm.scrollIntoView({ behavior: 'smooth' });
+                
+                console.log(`加载问题进行编辑: ${questionId}`);
+            } else {
+                console.error('找不到问题:', questionId);
             }
-        } catch (e) {
-            console.error('更新问题失败', e);
+        } catch (error) {
+            console.error('加载问题进行编辑失败:', error);
         }
     }
+    
+    // 从localStorage迁移问题到Firebase (如果需要)
+    async function migrateQuestionsFromLocalStorage() {
+        const savedQuestions = localStorage.getItem('weddingQuestions');
+        if (!savedQuestions) {
+            console.log('本地没有保存的问题，无需迁移');
+            return;
+        }
+        
+        try {
+            const questions = JSON.parse(savedQuestions);
+            console.log(`正在迁移 ${questions.length} 个问题到Firebase...`);
+            
+            for (const question of questions) {
+                // 检查问题是否已添加到Firebase (使用ID作为检查)
+                const q = query(
+                    collection(db, "questions"),
+                    where("localId", "==", question.id)
+                );
+                
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    // 问题尚未添加到Firebase
+                    const firestoreQuestion = {
+                        name: question.name,
+                        question: question.question,
+                        date: question.date,
+                        localId: question.id, // 保存本地ID以防止重复迁移
+                        timestamp: new Date(question.date),
+                        answer: question.answer,
+                        answerDate: question.answerDate,
+                        answered: question.answer ? true : false
+                    };
+                    
+                    await addDoc(collection(db, "questions"), firestoreQuestion);
+                    console.log(`问题已迁移 ID: ${question.id}`);
+                } else {
+                    console.log(`问题已存在，跳过: ${question.id}`);
+                }
+            }
+            
+            console.log('迁移完成，正在清除localStorage...');
+            localStorage.removeItem('weddingQuestions');
+        } catch (error) {
+            console.error('迁移问题时出错:', error);
+        }
+    }
+    
+    // 尝试迁移本地问题
+    setTimeout(migrateQuestionsFromLocalStorage, 3000);
 }
 
 // 创建问题元素
@@ -649,38 +809,6 @@ function createQuestionElement(questionData) {
     
     questionElement.innerHTML = html;
     return questionElement;
-}
-
-// 保存问题
-function saveQuestion(newQuestion) {
-    try {
-        const savedQuestions = localStorage.getItem('weddingQuestions');
-        let questions = [];
-        
-        if (savedQuestions) {
-            questions = JSON.parse(savedQuestions);
-        }
-        
-        questions.unshift(newQuestion); // 添加到数组开头
-        localStorage.setItem('weddingQuestions', JSON.stringify(questions));
-    } catch (e) {
-        console.error('保存问题失败', e);
-    }
-}
-
-// 删除问题
-function deleteQuestion(questionId) {
-    try {
-        const savedQuestions = localStorage.getItem('weddingQuestions');
-        
-        if (savedQuestions) {
-            let questions = JSON.parse(savedQuestions);
-            questions = questions.filter(q => q.id != questionId);
-            localStorage.setItem('weddingQuestions', JSON.stringify(questions));
-        }
-    } catch (e) {
-        console.error('删除问题失败', e);
-    }
 }
 
 // 显示成功消息
